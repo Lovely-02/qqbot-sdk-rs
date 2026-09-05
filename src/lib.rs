@@ -21,7 +21,7 @@ pub use api::{
     UtilityApi,
 };
 pub use auth::AccessTokenManager;
-pub use client::{Bot, Client, ClientConfig, QQBotClient};
+pub use client::{Bot, BotMode, Client, ClientConfig, EventTransport, QQBotClient};
 pub use entities::{ChannelHandle, DirectHandle, GroupHandle, GuildHandle, UserHandle};
 pub use error::{Result, SdkError};
 pub use events::{

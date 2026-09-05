@@ -57,7 +57,7 @@ async fn send(bot: &Bot) -> Result<()> {
 
 ## 限频与重试 ⏱️
 
-`ClientConfig::bot_qps` 控制 SDK 本地 Bot 维度主动请求频率，默认值为每秒 5 次。它不能替代 QQ 官方服务端限频；遇到官方 429 或业务错误时，仍应根据响应做退避。
+`ClientConfig::mode` 固定 Bot 的公域/私域和事件接入方式；`ClientConfig::bot_qps` 控制 SDK 本地 Bot 维度主动请求频率，默认值为每秒 5 次。它不能替代 QQ 官方服务端限频；遇到官方 429 或业务错误时，仍应根据响应做退避。
 
 网关 `GatewayConfig` 提供 `reconnect_delay` 和 `auto_reconnect`：
 

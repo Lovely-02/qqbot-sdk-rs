@@ -10,13 +10,12 @@ SDK 支持 WebSocket 网关和 Webhook 两种接收方式。事件对象会尽�
 use std::sync::Arc;
 use qqbot_sdk_rs::{
     events::{EventRouter, GatewayClient, GatewayConfig, GroupAtMessageCreate},
-    intents::{GuildMode, Intents},
     Bot, Result,
 };
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Arc::new(Bot::new("APP_ID", "APP_SECRET")?);
+    let bot = Arc::new(Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?);
     let router = EventRouter::new();
 
     router.on::<GroupAtMessageCreate, _, _>(|event| async move {
@@ -25,17 +24,13 @@ async fn main() -> Result<()> {
         Ok(())
     }).await;
 
-    let gateway = GatewayClient::new(
-        bot,
-        router,
-        GatewayConfig {
-            intents: Intents::for_mode(GuildMode::Public, true, true),
-            ..Default::default()
-        },
-    );
+    let config = GatewayConfig::for_bot(bot.as_ref());
+    let gateway = GatewayClient::new(bot, router, config)?;
     gateway.run().await
 }
 ```
+
+使用 Webhook 时，创建 Bot 应选择 `BotMode::PublicWebhook` 或 `BotMode::PrivateWebhook`；`Webhook::dispatch` 会拒绝把 Webhook 事件交给 WebSocket 模式的 Bot。
 
 这里的两个调用作用不同：`event.reply(...)` 是针对当前事件的被动回复；`event.group()?.send(...)` 是拿到群会话后发送一条主动消息。
 

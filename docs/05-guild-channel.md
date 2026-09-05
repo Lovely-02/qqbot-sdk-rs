@@ -15,7 +15,7 @@ use qqbot_sdk_rs::{segment, Bot, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     let guild = bot.guild("GUILD_ID");
     let channels = guild.channels().await?;
     println!("子频道数量：{}", channels.len());
@@ -36,7 +36,7 @@ use qqbot_sdk_rs::{Bot, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     let message = bot.api().channels().get_message("CHANNEL_ID", "MESSAGE_ID").await?;
     println!("消息内容：{:?}", message.content);
 
@@ -90,7 +90,7 @@ use serde_json::json;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     let dm = bot.api().bot().create_dm(&json!({ "recipient_id": "USER_ID" })).await?;
     let guild_id = dm["guild_id"].as_str().expect("官方响应缺少 guild_id");
     bot.direct(guild_id)

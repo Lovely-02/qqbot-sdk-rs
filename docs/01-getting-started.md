@@ -17,7 +17,16 @@ SDK 的异步 API 以 Tokio 为基础，`serde_json` 用于官方接口中可扩
 
 ## 创建客户端 🪄
 
-`Bot::new(app_id, app_secret)` 创建一个 QQ Bot API 客户端。`Bot` 是 `QQBotClient` 的友好别名，适合搭配 `bot.user(...)`、`bot.group(...)` 这类会话入口。
+`Bot::new(app_id, app_secret, mode)` 创建一个 QQ Bot API 客户端。`Bot` 是 `QQBotClient` 的友好别名，适合搭配 `bot.user(...)`、`bot.group(...)` 这类会话入口。
+
+创建时需要明确选择 Bot 的运行模式：
+
+| 模式                        | 公域/私域 | 事件接入  |
+| --------------------------- | --------- | --------- |
+| `BotMode::PublicWebSocket`  | 公域      | WebSocket |
+| `BotMode::PrivateWebSocket` | 私域      | WebSocket |
+| `BotMode::PublicWebhook`    | 公域      | Webhook   |
+| `BotMode::PrivateWebhook`   | 私域      | Webhook   |
 
 ```rust,no_run
 use qqbot_sdk_rs::{Bot, Result};
@@ -27,7 +36,7 @@ async fn main() -> Result<()> {
     // 从环境变量或密钥服务读取真实凭据，不要把密钥写进 Git。
     let app_id = std::env::var("QQ_APP_ID").expect("缺少 QQ_APP_ID");
     let app_secret = std::env::var("QQ_APP_SECRET").expect("缺少 QQ_APP_SECRET");
-    let bot = Bot::new(app_id, app_secret)?;
+    let bot = Bot::new(app_id, app_secret, qqbot_sdk_rs::BotMode::PublicWebSocket)?;
 
     let me = bot.api().bot().me().await?;
     println!("机器人昵称：{:?}", me.username);
@@ -51,10 +60,11 @@ async fn main() -> Result<()> {
 
 ```rust,no_run
 use std::time::Duration;
-use qqbot_sdk_rs::{Bot, ClientConfig, Result};
+use qqbot_sdk_rs::{Bot, BotMode, ClientConfig, Result};
 
 fn create_bot() -> Result<Bot> {
     let config = ClientConfig {
+        mode: BotMode::PrivateWebSocket,
         request_timeout: Duration::from_secs(30),
         bot_qps: 3,
         ..Default::default()
@@ -86,7 +96,7 @@ use qqbot_sdk_rs::{segment, Bot, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     bot.user("USER_OPENID")
         .send(segment::text("你好呀！Rust 小助手报到～"))
         .await?;

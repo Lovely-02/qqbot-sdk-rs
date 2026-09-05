@@ -23,7 +23,7 @@ use qqbot_sdk_rs::{segment, Bot, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     let user = bot.user("USER_OPENID");
 
     let profile = user.info().await?;
@@ -46,7 +46,7 @@ use qqbot_sdk_rs::{Bot, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     bot.api().messages().send_c2c("USER_OPENID", "主动消息").await?;
     bot.api()
         .messages()
@@ -67,7 +67,7 @@ use qqbot_sdk_rs::{MediaTarget, Bot, MessageRequest, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     bot.api()
         .messages()
         .send_media_url(
@@ -88,7 +88,7 @@ use qqbot_sdk_rs::{segment, MediaTarget, Bot, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     let data = std::fs::read("./assets/photo.png").expect("读取图片失败");
     let media = bot
         .api()
@@ -113,7 +113,7 @@ use serde_json::json;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     let body = json!({
         "msg_type": 0,
         "content": "正在整理答案……",

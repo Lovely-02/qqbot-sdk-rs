@@ -24,7 +24,7 @@ use qqbot_sdk_rs::{segment, Bot, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
 
     bot.user("USER_OPENID")
         .send(segment::markdown("**今天也要加油**"))
@@ -48,6 +48,19 @@ async fn main() -> Result<()> {
 | `bot.api().groups()`   | 群管理 API           |
 | `bot.api().guilds()`   | 频道和频道成员 API   |
 | `bot.api().channels()` | 子频道内容与管理 API |
+
+创建 Bot 时必须明确选择公域/私域和事件接入方式，详见 [01 起步与鉴权](01-getting-started.md)：
+
+```rust,no_run
+use qqbot_sdk_rs::{Bot, BotMode, Result};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let bot = Bot::new("APP_ID", "APP_SECRET", BotMode::PrivateWebSocket)?;
+    println!("当前模式：{:?}", bot.mode());
+    Ok(())
+}
+```
 
 ## ID 小抄 🪪
 

@@ -16,7 +16,7 @@ use qqbot_sdk_rs::{segment, Bot, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     bot.group("GROUP_OPENID")
         .send(segment::text("今日签到成功！"))
         .await?;
@@ -50,7 +50,7 @@ use qqbot_sdk_rs::{segment, Bot, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     bot.channel("CHANNEL_ID")
         .send([
             segment::at("CHANNEL_USER_ID"),
@@ -73,7 +73,7 @@ use serde_json::json;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
 
     bot.group("GROUP_OPENID")
         .send([
@@ -111,7 +111,7 @@ use qqbot_sdk_rs::{segment, Bot, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     bot.channel("CHANNEL_ID")
         .send([
             segment::reply("OLD_MESSAGE_ID"),
@@ -131,7 +131,7 @@ use qqbot_sdk_rs::{segment, Bot, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
 
     // 本地图片会走单聊/群聊官方分片上传流程。
     bot.group("GROUP_OPENID")
@@ -153,7 +153,7 @@ use qqbot_sdk_rs::{MediaTarget, Bot, MessageRequest, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     let bytes = std::fs::read("./assets/nyan.png").expect("读取图片失败");
     bot.api()
         .messages()
@@ -178,7 +178,7 @@ use qqbot_sdk_rs::{Bot, MessageRequest, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     let request = MessageRequest {
         content: Some("可控字段消息".into()),
         msg_type: Some(0),

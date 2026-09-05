@@ -6,6 +6,7 @@ use crate::{
     auth::AccessTokenManager,
     entities::{ChannelHandle, DirectHandle, GroupHandle, GuildHandle, UserHandle},
     error::{Result, SdkError},
+    intents::{GuildMode, Intents},
     models::ApiErrorBody,
     ratelimit::RateLimiter,
 };
@@ -27,9 +28,63 @@ pub(crate) fn next_span_id() -> u64 {
     NEXT_SPAN_ID.fetch_add(1, Ordering::Relaxed)
 }
 
+/// Bot 的事件接入方式。
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum EventTransport {
+    /// 使用 WebSocket 网关接收事件。
+    WebSocket,
+    /// 使用 Webhook 接收事件。
+    Webhook,
+}
+
+/// Bot 的公域/私域与事件接入组合。
+///
+/// 创建 Bot 时必须明确选择一种模式，避免网关订阅范围和事件接入方式配置错位。
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum BotMode {
+    /// 公域 Bot + WebSocket。
+    PublicWebSocket,
+    /// 私域 Bot + WebSocket。
+    PrivateWebSocket,
+    /// 公域 Bot + Webhook。
+    PublicWebhook,
+    /// 私域 Bot + Webhook。
+    PrivateWebhook,
+}
+
+impl BotMode {
+    /// 返回当前 Bot 对应的公域/私域模式。
+    pub const fn guild_mode(self) -> GuildMode {
+        match self {
+            Self::PublicWebSocket | Self::PublicWebhook => GuildMode::Public,
+            Self::PrivateWebSocket | Self::PrivateWebhook => GuildMode::Private,
+        }
+    }
+
+    /// 返回当前 Bot 的事件接入方式。
+    pub const fn event_transport(self) -> EventTransport {
+        match self {
+            Self::PublicWebSocket | Self::PrivateWebSocket => EventTransport::WebSocket,
+            Self::PublicWebhook | Self::PrivateWebhook => EventTransport::Webhook,
+        }
+    }
+
+    /// 判断当前 Bot 是否使用 WebSocket。
+    pub const fn is_websocket(self) -> bool {
+        matches!(self.event_transport(), EventTransport::WebSocket)
+    }
+
+    /// 判断当前 Bot 是否使用 Webhook。
+    pub const fn is_webhook(self) -> bool {
+        matches!(self.event_transport(), EventTransport::Webhook)
+    }
+}
+
 /// HTTP 与网关连接的基础配置。
 #[derive(Debug, Clone)]
 pub struct ClientConfig {
+    /// Bot 的公域/私域与事件接入组合。
+    pub mode: BotMode,
     /// QQ API 根地址。
     pub api_base_url: String,
     /// 网关地址；为空时先调用 `/gateway`。
@@ -43,6 +98,7 @@ pub struct ClientConfig {
 impl Default for ClientConfig {
     fn default() -> Self {
         Self {
+            mode: BotMode::PublicWebSocket,
             api_base_url: "https://api.bot.qq.com".into(),
             gateway_url: None,
             request_timeout: Duration::from_secs(20),
@@ -66,9 +122,20 @@ pub type Client = QQBotClient;
 pub type Bot = QQBotClient;
 
 impl QQBotClient {
-    /// 使用 AppID 和 AppSecret 创建客户端。
-    pub fn new(app_id: impl Into<String>, app_secret: impl Into<String>) -> Result<Self> {
-        Self::with_config(app_id, app_secret, ClientConfig::default())
+    /// 使用 AppID、AppSecret 和 Bot 模式创建客户端。
+    pub fn new(
+        app_id: impl Into<String>,
+        app_secret: impl Into<String>,
+        mode: BotMode,
+    ) -> Result<Self> {
+        Self::with_config(
+            app_id,
+            app_secret,
+            ClientConfig {
+                mode,
+                ..Default::default()
+            },
+        )
     }
 
     /// 使用自定义配置创建客户端。
@@ -104,6 +171,26 @@ impl QQBotClient {
     /// 返回底层鉴权管理器。
     pub fn auth(&self) -> &AccessTokenManager {
         &self.auth
+    }
+
+    /// 返回创建客户端时选择的 Bot 模式。
+    pub fn mode(&self) -> BotMode {
+        self.config.mode
+    }
+
+    /// 返回当前 Bot 的公域/私域模式。
+    pub fn guild_mode(&self) -> GuildMode {
+        self.config.mode.guild_mode()
+    }
+
+    /// 返回当前 Bot 的事件接入方式。
+    pub fn event_transport(&self) -> EventTransport {
+        self.config.mode.event_transport()
+    }
+
+    /// 根据 Bot 模式生成常用的官方网关订阅配置。
+    pub fn default_intents(&self) -> Intents {
+        Intents::for_mode(self.guild_mode(), true, true)
     }
 
     /// 返回群会话实体，对应 `bot.group(id)`。

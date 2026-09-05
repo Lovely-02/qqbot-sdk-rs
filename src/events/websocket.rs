@@ -39,6 +39,16 @@ impl Default for GatewayConfig {
     }
 }
 
+impl GatewayConfig {
+    /// 根据 Bot 创建与公域/私域模式匹配的网关配置。
+    pub fn for_bot(client: &QQBotClient) -> Self {
+        Self {
+            intents: client.default_intents(),
+            ..Default::default()
+        }
+    }
+}
+
 /// WebSocket 网关客户端，负责连接、鉴权、心跳、事件分发和重连。
 pub struct GatewayClient {
     client: Arc<QQBotClient>,
@@ -59,13 +69,27 @@ impl GatewayClient {
         client: Arc<QQBotClient>,
         router: crate::events::EventRouter,
         config: GatewayConfig,
-    ) -> Self {
-        Self {
+    ) -> Result<Self> {
+        if !client.mode().is_websocket() {
+            return Err(SdkError::InvalidInput(
+                "当前 Bot 模式不是 WebSocket，不能创建 GatewayClient".into(),
+            ));
+        }
+        let required_guild_intent = match client.guild_mode() {
+            crate::intents::GuildMode::Public => Intents::PUBLIC_GUILD_MESSAGES,
+            crate::intents::GuildMode::Private => Intents::GUILD_MESSAGES,
+        };
+        if !config.intents.contains(required_guild_intent) {
+            return Err(SdkError::InvalidInput(
+                "GatewayConfig 的频道订阅范围必须与 BotMode 的公域/私域一致".into(),
+            ));
+        }
+        Ok(Self {
             client,
             router,
             config,
             state: Arc::new(Mutex::new(GatewayState::default())),
-        }
+        })
     }
 
     /// 连接网关并运行事件循环；断线后按配置重连。

@@ -141,6 +141,11 @@ impl Webhook {
         router: &EventRouter,
         client: Arc<QQBotClient>,
     ) -> Result<()> {
+        if !client.mode().is_webhook() {
+            return Err(SdkError::InvalidInput(
+                "当前 Bot 模式不是 Webhook，不能分发 Webhook 事件".into(),
+            ));
+        }
         router
             .dispatch(self.parse_envelope(timestamp, signature, body)?, client)
             .await

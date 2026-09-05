@@ -38,7 +38,7 @@ use qqbot_sdk_rs::{segment, Bot, Result};
 #[tokio::main]
 async fn main() -> Result<()> {
     // 从 QQ 开放平台获取 AppID 和 AppSecret。
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
 
     // 好友 / 单聊：目标是该 Bot 体系下的 user_openid。
     bot.user("USER_OPENID")
@@ -49,6 +49,17 @@ async fn main() -> Result<()> {
 ```
 
 SDK 会自动获取并缓存 AccessToken，并在请求中加入 `Authorization: QQBot <token>`。`APP_ID`、`APP_SECRET`、用户 OpenID、群 OpenID 和频道 ID 都是占位符，请替换成你自己的值。
+
+创建 Bot 时必须明确选择公域/私域和事件接入方式：
+
+| 模式                        | 频道范围 | 事件接入  |
+| --------------------------- | -------- | --------- |
+| `BotMode::PublicWebSocket`  | 公域     | WebSocket |
+| `BotMode::PrivateWebSocket` | 私域     | WebSocket |
+| `BotMode::PublicWebhook`    | 公域     | Webhook   |
+| `BotMode::PrivateWebhook`   | 私域     | Webhook   |
+
+网关场景建议使用 `GatewayConfig::for_bot(&bot)` 生成与 Bot 模式匹配的 Intents；Webhook 场景则使用对应的 Webhook 验签器处理 HTTP 回调。
 
 ## 三类场景怎么选？
 
@@ -69,14 +80,13 @@ SDK 会自动获取并缓存 AccessToken，并在请求中加入 `Authorization:
 use std::sync::Arc;
 use qqbot_sdk_rs::{
     events::{EventRouter, GatewayClient, GroupAtMessageCreate},
-    intents::{GuildMode, Intents},
     segment,
     GatewayConfig, Bot, Result,
 };
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Arc::new(Bot::new("APP_ID", "APP_SECRET")?);
+    let bot = Arc::new(Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?);
     let router = EventRouter::new();
 
     router.on::<GroupAtMessageCreate, _, _>(|event| async move {
@@ -85,14 +95,8 @@ async fn main() -> Result<()> {
         Ok(())
     }).await;
 
-    let gateway = GatewayClient::new(
-        bot,
-        router,
-        GatewayConfig {
-            intents: Intents::for_mode(GuildMode::Public, true, true),
-            ..Default::default()
-        },
-    );
+    let config = GatewayConfig::for_bot(bot.as_ref());
+    let gateway = GatewayClient::new(bot, router, config)?;
     gateway.run().await
 }
 ```

@@ -16,7 +16,7 @@ use qqbot_sdk_rs::{Bot, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     let me = bot.api().bot().me().await?;
     let guilds = bot.api().bot().guilds(None, Some(50)).await?;
     println!("机器人：{:?}，可访问频道：{}", me.username, guilds.len());

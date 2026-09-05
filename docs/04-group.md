@@ -18,7 +18,7 @@ use qqbot_sdk_rs::{segment, Bot, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     let group = bot.group("GROUP_OPENID");
     let info = group.info().await?;
     println!("群名称：{:?}", info.name);
@@ -37,7 +37,7 @@ use qqbot_sdk_rs::{Bot, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     bot.api().messages().send_group("GROUP_OPENID", "主动通知").await?;
     bot.api()
         .messages()
@@ -56,7 +56,7 @@ use qqbot_sdk_rs::{Bot, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     let groups = bot.api().groups();
     let members = groups.members_page("GROUP_OPENID", None, Some(100)).await?;
     let state = groups.bot_state("GROUP_OPENID").await?;
@@ -86,7 +86,7 @@ use serde_json::json;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET")?;
+    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     let body = json!({
         "name": "新成员欢迎策略",
         "remark": "按业务需要填写官方字段"
