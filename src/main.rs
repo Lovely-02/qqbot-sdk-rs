@@ -1,0 +1,9 @@
+use qqbot_sdk_rs::{Result, logging::SakuraLogger};
+
+/// 最小 Echo Bot 入口示例。实际网关运行需要在业务代码中创建客户端并注册处理器。
+#[tokio::main]
+async fn main() -> Result<()> {
+    let _log_guard = SakuraLogger::init()?;
+    tracing::info!("qqbot-sdk-rs 示例已启动");
+    Ok(())
+}
