@@ -6,7 +6,7 @@ pub mod payload;
 pub mod webhook;
 pub mod websocket;
 
-pub use handler::{Event, EventEnvelope, EventHandler, EventRouter};
+pub use handler::{Event, EventContext, EventEnvelope, EventHandler, EventRouter};
 pub use opcode::OpCode;
 pub use payload::Payload;
 pub use webhook::{CallbackValidationResponse, Webhook, WebhookVerifier};
@@ -69,7 +69,15 @@ pub fn event_display_name(event: &str) -> &'static str {
     }
 }
 
-use crate::models::{Message, User};
+use crate::{
+    entities::{ChannelHandle, DirectHandle, GroupHandle, GuildHandle, UserHandle},
+    error::{Result, SdkError},
+    models::{
+        ArkData, Embed, FriendAuthor, Message, MessageAttachment, MessageElement, MessageScene,
+        User,
+    },
+    segment::Sendable,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -94,40 +102,267 @@ pub struct MessageCreateEvent {
     pub guild_id: Option<String>,
     pub content: Option<String>,
     pub author: Option<User>,
+    pub timestamp: Option<String>,
+    pub seq: Option<u64>,
+    pub seq_in_channel: Option<String>,
+    pub tts: Option<bool>,
+    pub mention_everyone: Option<bool>,
+    #[serde(default)]
+    pub mentions: Vec<User>,
+    #[serde(default)]
+    pub attachments: Vec<MessageAttachment>,
+    #[serde(default)]
+    pub embeds: Vec<Embed>,
     #[serde(flatten)]
     pub extra: Value,
+    #[serde(skip)]
+    context: Option<EventContext>,
 }
 
 impl Event for MessageCreateEvent {
     const NAME: &'static str = "MESSAGE_CREATE";
+    const NAMES: &'static [&'static str] = &["MESSAGE_CREATE", "AT_MESSAGE_CREATE"];
+
+    fn attach_context(&mut self, context: EventContext) {
+        self.context = Some(context);
+    }
+}
+
+impl MessageCreateEvent {
+    /// 返回此消息对应的子频道会话实体。
+    pub fn channel(&self) -> Result<ChannelHandle> {
+        let channel_id = self
+            .channel_id
+            .clone()
+            .ok_or_else(|| SdkError::InvalidInput("频道消息缺少 channel_id".into()))?;
+        Ok(self.context()?.client().channel(channel_id))
+    }
+
+    /// 返回此消息对应的频道会话实体。
+    pub fn guild(&self) -> Result<GuildHandle> {
+        let guild_id = self
+            .guild_id
+            .clone()
+            .ok_or_else(|| SdkError::InvalidInput("频道消息缺少 guild_id".into()))?;
+        Ok(self.context()?.client().guild(guild_id))
+    }
+
+    /// 回复此频道消息。
+    pub async fn reply(&self, message: impl Into<Sendable>) -> Result<Message> {
+        let channel_id = self
+            .channel_id
+            .as_deref()
+            .ok_or_else(|| SdkError::InvalidInput("频道消息缺少 channel_id".into()))?;
+        let context = self.context()?;
+        context
+            .client()
+            .api()
+            .messages()
+            .reply_channel(
+                channel_id,
+                message,
+                self.id.as_deref(),
+                context.event_id.as_deref(),
+            )
+            .await
+    }
+
+    fn context(&self) -> Result<&EventContext> {
+        self.context
+            .as_ref()
+            .ok_or_else(|| SdkError::InvalidInput("事件未绑定运行时 Client".into()))
+    }
+}
+
+/// 频道私信消息事件（`DIRECT_MESSAGE_CREATE`）。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct DirectMessageCreate {
+    pub id: Option<String>,
+    pub channel_id: Option<String>,
+    pub guild_id: Option<String>,
+    pub content: Option<String>,
+    pub author: Option<User>,
+    pub timestamp: Option<String>,
+    pub seq: Option<u64>,
+    #[serde(flatten)]
+    pub extra: Value,
+    #[serde(skip)]
+    context: Option<EventContext>,
+}
+
+impl Event for DirectMessageCreate {
+    const NAME: &'static str = "DIRECT_MESSAGE_CREATE";
+
+    fn attach_context(&mut self, context: EventContext) {
+        self.context = Some(context);
+    }
+}
+
+impl DirectMessageCreate {
+    pub fn direct(&self) -> Result<DirectHandle> {
+        let guild_id = self
+            .guild_id
+            .clone()
+            .ok_or_else(|| SdkError::InvalidInput("频道私信缺少 guild_id".into()))?;
+        Ok(self.context()?.client().direct(guild_id))
+    }
+
+    pub fn channel(&self) -> Result<ChannelHandle> {
+        let channel_id = self
+            .channel_id
+            .clone()
+            .ok_or_else(|| SdkError::InvalidInput("频道私信缺少 channel_id".into()))?;
+        Ok(self.context()?.client().channel(channel_id))
+    }
+
+    pub async fn reply(&self, message: impl Into<Sendable>) -> Result<Message> {
+        let guild_id = self
+            .guild_id
+            .as_deref()
+            .ok_or_else(|| SdkError::InvalidInput("频道私信缺少 guild_id".into()))?;
+        let context = self.context()?;
+        context
+            .client()
+            .api()
+            .messages()
+            .reply_dm(
+                guild_id,
+                message,
+                self.id.as_deref(),
+                context.event_id.as_deref(),
+            )
+            .await
+    }
+
+    fn context(&self) -> Result<&EventContext> {
+        self.context
+            .as_ref()
+            .ok_or_else(|| SdkError::InvalidInput("事件未绑定运行时 Client".into()))
+    }
 }
 
 /// 单聊消息事件。
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct C2cMessageReceive {
     pub id: Option<String>,
+    pub user_openid: Option<String>,
     pub content: Option<String>,
     pub author: Option<User>,
+    pub timestamp: Option<String>,
+    pub message_type: Option<u16>,
+    pub message_scene: Option<MessageScene>,
+    #[serde(default)]
+    pub attachments: Vec<MessageAttachment>,
+    pub ark_data: Option<ArkData>,
+    #[serde(default)]
+    pub msg_elements: Vec<MessageElement>,
     #[serde(flatten)]
     pub extra: Value,
+    #[serde(skip)]
+    context: Option<EventContext>,
 }
 
 impl Event for C2cMessageReceive {
     const NAME: &'static str = "C2C_MESSAGE_CREATE";
+
+    fn attach_context(&mut self, context: EventContext) {
+        self.context = Some(context);
+    }
 }
 
-/// 新版网关使用的单聊消息事件名称（`C2C_MSG_RECEIVE`）。
+impl C2cMessageReceive {
+    pub fn user(&self) -> Result<UserHandle> {
+        let user_openid = self.user_openid().ok_or_else(|| {
+            SdkError::InvalidInput("单聊事件缺少 user_openid 或 author.id".into())
+        })?;
+        Ok(self.context()?.client().user(user_openid))
+    }
+
+    pub async fn reply(&self, message: impl Into<Sendable>) -> Result<Message> {
+        let user_openid = self.user_openid().ok_or_else(|| {
+            SdkError::InvalidInput("单聊事件缺少 user_openid 或 author.id".into())
+        })?;
+        let context = self.context()?;
+        context
+            .client()
+            .api()
+            .messages()
+            .reply_c2c(
+                user_openid,
+                message,
+                self.id.as_deref(),
+                context.event_id.as_deref(),
+            )
+            .await
+    }
+
+    fn user_openid(&self) -> Option<&str> {
+        self.user_openid
+            .as_deref()
+            .or_else(|| {
+                self.author
+                    .as_ref()
+                    .and_then(|user| user.user_openid.as_deref())
+            })
+            .or_else(|| self.author.as_ref().and_then(|user| user.openid.as_deref()))
+            .or_else(|| self.author.as_ref().and_then(|user| user.id.as_deref()))
+    }
+
+    fn context(&self) -> Result<&EventContext> {
+        self.context
+            .as_ref()
+            .ok_or_else(|| SdkError::InvalidInput("事件未绑定运行时 Client".into()))
+    }
+}
+
+/// 用户开启单聊主动消息接收时触发的事件（`C2C_MSG_RECEIVE`）。
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct C2cMsgReceive {
-    pub id: Option<String>,
-    pub content: Option<String>,
-    pub author: Option<User>,
+    pub openid: Option<String>,
+    pub timestamp: Option<i64>,
     #[serde(flatten)]
     pub extra: Value,
+    #[serde(skip)]
+    context: Option<EventContext>,
 }
 
 impl Event for C2cMsgReceive {
     const NAME: &'static str = "C2C_MSG_RECEIVE";
+
+    fn attach_context(&mut self, context: EventContext) {
+        self.context = Some(context);
+    }
+}
+
+impl C2cMsgReceive {
+    pub fn user(&self) -> Result<UserHandle> {
+        let openid = self
+            .openid
+            .clone()
+            .ok_or_else(|| SdkError::InvalidInput("事件缺少 openid".into()))?;
+        let context = self
+            .context
+            .as_ref()
+            .ok_or_else(|| SdkError::InvalidInput("事件未绑定运行时 Client".into()))?;
+        Ok(context.client().user(openid))
+    }
+
+    pub async fn reply(&self, message: impl Into<Sendable>) -> Result<Message> {
+        let openid = self
+            .openid
+            .as_deref()
+            .ok_or_else(|| SdkError::InvalidInput("事件缺少 openid".into()))?;
+        let context = self
+            .context
+            .as_ref()
+            .ok_or_else(|| SdkError::InvalidInput("事件未绑定运行时 Client".into()))?;
+        context
+            .client()
+            .api()
+            .messages()
+            .reply_c2c(openid, message, None, context.event_id.as_deref())
+            .await
+    }
 }
 
 /// 群聊中 @ 机器人的消息事件。
@@ -137,24 +372,197 @@ pub struct GroupAtMessageCreate {
     pub group_openid: Option<String>,
     pub content: Option<String>,
     pub author: Option<User>,
+    pub timestamp: Option<String>,
+    pub message_type: Option<u16>,
+    pub message_scene: Option<MessageScene>,
+    #[serde(default)]
+    pub attachments: Vec<MessageAttachment>,
+    #[serde(default)]
+    pub mentions: Vec<User>,
+    pub ark_data: Option<ArkData>,
+    #[serde(default)]
+    pub msg_elements: Vec<MessageElement>,
     #[serde(flatten)]
     pub extra: Value,
+    #[serde(skip)]
+    context: Option<EventContext>,
 }
 
 impl Event for GroupAtMessageCreate {
     const NAME: &'static str = "GROUP_AT_MESSAGE_CREATE";
+
+    fn attach_context(&mut self, context: EventContext) {
+        self.context = Some(context);
+    }
+}
+
+impl GroupAtMessageCreate {
+    pub fn group(&self) -> Result<GroupHandle> {
+        let group_openid = self
+            .group_openid
+            .clone()
+            .ok_or_else(|| SdkError::InvalidInput("群消息缺少 group_openid".into()))?;
+        Ok(self.context()?.client().group(group_openid))
+    }
+
+    pub async fn reply(&self, message: impl Into<Sendable>) -> Result<Message> {
+        let group_openid = self
+            .group_openid
+            .as_deref()
+            .ok_or_else(|| SdkError::InvalidInput("群消息缺少 group_openid".into()))?;
+        let context = self.context()?;
+        context
+            .client()
+            .api()
+            .messages()
+            .reply_group(
+                group_openid,
+                message,
+                self.id.as_deref(),
+                context.event_id.as_deref(),
+            )
+            .await
+    }
+
+    fn context(&self) -> Result<&EventContext> {
+        self.context
+            .as_ref()
+            .ok_or_else(|| SdkError::InvalidInput("事件未绑定运行时 Client".into()))
+    }
+}
+
+/// 群聊普通消息事件。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct GroupMessageCreate {
+    pub id: Option<String>,
+    pub group_openid: Option<String>,
+    pub content: Option<String>,
+    pub author: Option<User>,
+    pub timestamp: Option<String>,
+    pub message_type: Option<u16>,
+    pub message_scene: Option<MessageScene>,
+    #[serde(default)]
+    pub attachments: Vec<MessageAttachment>,
+    #[serde(default)]
+    pub mentions: Vec<User>,
+    pub ark_data: Option<ArkData>,
+    #[serde(default)]
+    pub msg_elements: Vec<MessageElement>,
+    #[serde(flatten)]
+    pub extra: Value,
+    #[serde(skip)]
+    context: Option<EventContext>,
+}
+
+impl Event for GroupMessageCreate {
+    const NAME: &'static str = "GROUP_MESSAGE_CREATE";
+
+    fn attach_context(&mut self, context: EventContext) {
+        self.context = Some(context);
+    }
+}
+
+impl GroupMessageCreate {
+    pub fn group(&self) -> Result<GroupHandle> {
+        let group_openid = self
+            .group_openid
+            .clone()
+            .ok_or_else(|| SdkError::InvalidInput("群消息缺少 group_openid".into()))?;
+        Ok(self.context()?.client().group(group_openid))
+    }
+
+    pub async fn reply(&self, message: impl Into<Sendable>) -> Result<Message> {
+        let group_openid = self
+            .group_openid
+            .as_deref()
+            .ok_or_else(|| SdkError::InvalidInput("群消息缺少 group_openid".into()))?;
+        let context = self.context()?;
+        context
+            .client()
+            .api()
+            .messages()
+            .reply_group(
+                group_openid,
+                message,
+                self.id.as_deref(),
+                context.event_id.as_deref(),
+            )
+            .await
+    }
+
+    fn context(&self) -> Result<&EventContext> {
+        self.context
+            .as_ref()
+            .ok_or_else(|| SdkError::InvalidInput("事件未绑定运行时 Client".into()))
+    }
 }
 
 /// 好友添加事件。
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct FriendAdd {
-    pub user_openid: Option<String>,
+    pub openid: Option<String>,
+    pub timestamp: Option<i64>,
+    pub scene: Option<u16>,
+    pub scene_param: Option<String>,
+    pub author: Option<FriendAuthor>,
+    pub short_code: Option<String>,
     #[serde(flatten)]
     pub extra: Value,
+    #[serde(skip)]
+    context: Option<EventContext>,
 }
 
 impl Event for FriendAdd {
     const NAME: &'static str = "FRIEND_ADD";
+
+    fn attach_context(&mut self, context: EventContext) {
+        self.context = Some(context);
+    }
+}
+
+impl FriendAdd {
+    pub fn user(&self) -> Result<UserHandle> {
+        let openid = self
+            .openid
+            .clone()
+            .ok_or_else(|| SdkError::InvalidInput("好友事件缺少 openid".into()))?;
+        let context = self
+            .context
+            .as_ref()
+            .ok_or_else(|| SdkError::InvalidInput("事件未绑定运行时 Client".into()))?;
+        Ok(context.client().user(openid))
+    }
+
+    pub async fn reply(&self, message: impl Into<Sendable>) -> Result<Message> {
+        let openid = self
+            .openid
+            .as_deref()
+            .ok_or_else(|| SdkError::InvalidInput("好友事件缺少 openid".into()))?;
+        let context = self
+            .context
+            .as_ref()
+            .ok_or_else(|| SdkError::InvalidInput("事件未绑定运行时 Client".into()))?;
+        context
+            .client()
+            .api()
+            .messages()
+            .reply_c2c(openid, message, None, context.event_id.as_deref())
+            .await
+    }
+}
+
+/// 用户删除机器人好友事件。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct FriendDelete {
+    pub openid: Option<String>,
+    pub timestamp: Option<i64>,
+    pub author: Option<FriendAuthor>,
+    #[serde(flatten)]
+    pub extra: Value,
+}
+
+impl Event for FriendDelete {
+    const NAME: &'static str = "FRIEND_DEL";
 }
 
 /// 互动事件，保留未知字段以兼容平台扩展。

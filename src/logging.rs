@@ -30,7 +30,7 @@ pub enum LogTarget {
 /// 日志初始化守卫；文件日志必须保持该值存活以完成异步写入。
 pub type WorkerGuard = tracing_appender::non_blocking::WorkerGuard;
 
-/// Sakura 风格的日志 Builder（名称沿用原项目提示词）。
+/// Sakura 风格的日志 Builder。
 #[derive(Debug, Clone)]
 pub struct SakuraLogger {
     format: Format,

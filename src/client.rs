@@ -4,6 +4,7 @@ use crate::{
         UserApi, UtilityApi,
     },
     auth::AccessTokenManager,
+    entities::{ChannelHandle, DirectHandle, GroupHandle, GuildHandle, UserHandle},
     error::{Result, SdkError},
     models::ApiErrorBody,
     ratelimit::RateLimiter,
@@ -61,6 +62,8 @@ pub struct QQBotClient {
 
 /// `QQBotClient` 的简写别名。
 pub type Client = QQBotClient;
+/// 供会话实体和事件辅助方法使用的 Bot 风格公开别名。
+pub type Bot = QQBotClient;
 
 impl QQBotClient {
     /// 使用 AppID 和 AppSecret 创建客户端。
@@ -103,24 +106,49 @@ impl QQBotClient {
         &self.auth
     }
 
+    /// 返回群会话实体，对应 `bot.group(id)`。
+    pub fn group(&self, id: impl Into<String>) -> GroupHandle {
+        GroupHandle::new(Arc::new(self.clone()), id)
+    }
+
+    /// 返回单聊用户会话实体，对应 `bot.user(id)`。
+    pub fn user(&self, id: impl Into<String>) -> UserHandle {
+        UserHandle::new(Arc::new(self.clone()), id)
+    }
+
+    /// 返回频道子频道会话实体，对应 `bot.channel(id)`。
+    pub fn channel(&self, id: impl Into<String>) -> ChannelHandle {
+        ChannelHandle::new(Arc::new(self.clone()), id)
+    }
+
+    /// 返回频道私信会话实体，对应 `bot.direct(guild_id)`。
+    pub fn direct(&self, guild_id: impl Into<String>) -> DirectHandle {
+        DirectHandle::new(Arc::new(self.clone()), guild_id)
+    }
+
+    /// 返回频道会话实体，对应 `bot.guild(id)`。
+    pub fn guild(&self, id: impl Into<String>) -> GuildHandle {
+        GuildHandle::new(Arc::new(self.clone()), id)
+    }
+
     /// 发送单聊消息的便捷方法。
     pub async fn send_c2c_message(
         &self,
         user_openid: &str,
-        request: &crate::models::MessageRequest,
+        message: impl Into<crate::segment::Sendable>,
     ) -> Result<crate::models::Message> {
-        self.api().messages().send_c2c(user_openid, request).await
+        self.api().messages().send_c2c(user_openid, message).await
     }
 
     /// 发送群消息的便捷方法。
     pub async fn send_group_message(
         &self,
         group_openid: &str,
-        request: &crate::models::MessageRequest,
+        message: impl Into<crate::segment::Sendable>,
     ) -> Result<crate::models::Message> {
         self.api()
             .messages()
-            .send_group(group_openid, request)
+            .send_group(group_openid, message)
             .await
     }
 
@@ -128,11 +156,11 @@ impl QQBotClient {
     pub async fn send_channel_message(
         &self,
         channel_id: &str,
-        request: &crate::models::MessageRequest,
+        message: impl Into<crate::segment::Sendable>,
     ) -> Result<crate::models::Message> {
         self.api()
             .messages()
-            .send_channel(channel_id, request)
+            .send_channel(channel_id, message)
             .await
     }
 
@@ -228,6 +256,34 @@ impl QQBotClient {
                 request = request.json(body);
             }
             let response = request.send().await?;
+            self.decode_response(response).await
+        }
+        .instrument(span)
+        .await
+    }
+
+    pub(crate) async fn request_multipart<T>(
+        &self,
+        method: Method,
+        path: &str,
+        form: reqwest::multipart::Form,
+    ) -> Result<T>
+    where
+        T: DeserializeOwned,
+    {
+        self.limiter.acquire("bot").await?;
+        let token = self.auth.token().await?;
+        let trace_id = next_span_id();
+        let span_id = next_span_id();
+        let span = info_span!("qq_http", method = %method, path, trace_id, span_id);
+        async move {
+            let response = self
+                .http
+                .request(method, self.url(path))
+                .header("Authorization", format!("QQBot {token}"))
+                .multipart(form)
+                .send()
+                .await?;
             self.decode_response(response).await
         }
         .instrument(span)

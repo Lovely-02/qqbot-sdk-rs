@@ -10,6 +10,16 @@ pub struct User {
     pub bot: Option<bool>,
     pub union_openid: Option<String>,
     pub openid: Option<String>,
+    pub union_user_account: Option<String>,
+    pub user_openid: Option<String>,
+    pub member_openid: Option<String>,
+    pub member_role: Option<String>,
+}
+
+/// 好友关系事件中返回的用户摘要。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct FriendAuthor {
+    pub union_openid: Option<String>,
 }
 
 /// QQ 群信息。
@@ -57,7 +67,7 @@ pub struct Embed {
 /// Ark 模板消息。
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Ark {
-    pub template_id: String,
+    pub template_id: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kv: Option<Vec<Value>>,
 }
@@ -65,8 +75,67 @@ pub struct Ark {
 /// 引用一条已有消息。
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MessageReference {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub message_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub ignore_get_message_error: Option<bool>,
+}
+
+/// C2C/群聊输入状态通知。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct InputNotify {
+    pub input_type: Option<u8>,
+    pub input_second: Option<u32>,
+}
+
+/// 消息响应中用于引用消息的扩展索引。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MessageExtInfo {
+    pub ref_idx: Option<String>,
+}
+
+/// QQ 消息附件。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MessageAttachment {
+    pub url: Option<String>,
+    pub filename: Option<String>,
+    pub width: Option<u64>,
+    pub height: Option<u64>,
+    pub size: Option<u64>,
+    pub content_type: Option<String>,
+    pub voice_wav_url: Option<String>,
+    pub asr_refer_text: Option<String>,
+}
+
+/// 单聊和群聊消息场景上下文。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MessageScene {
+    pub source: Option<String>,
+    #[serde(default)]
+    pub ext: Vec<String>,
+}
+
+/// 接收消息中的结构化卡片数据。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ArkData {
+    pub prompt: Option<String>,
+    pub ark_type: Option<String>,
+    pub ark_name: Option<String>,
+    pub fields: Option<Value>,
+}
+
+/// 引用消息或并行消息中的嵌套元素。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MessageElement {
+    pub msg_idx: Option<String>,
+    pub author: Option<User>,
+    pub message_type: Option<u16>,
+    pub content: Option<String>,
+    #[serde(default)]
+    pub attachments: Vec<MessageAttachment>,
+    pub ark_data: Option<ArkData>,
+    #[serde(default)]
+    pub msg_elements: Vec<MessageElement>,
 }
 
 /// 富媒体上传后得到的文件信息。
@@ -91,7 +160,9 @@ pub struct Media {
 /// 内嵌按钮键盘定义。
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Keyboard {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<Value>,
 }
 
@@ -126,6 +197,8 @@ pub struct MessageRequest {
     pub event_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_wakeup: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input_notify: Option<InputNotify>,
 }
 
 /// QQ API 返回的消息对象。
@@ -137,7 +210,27 @@ pub struct Message {
     pub content: Option<String>,
     pub timestamp: Option<String>,
     pub author: Option<User>,
+    #[serde(rename = "type", alias = "msg_type")]
     pub msg_type: Option<u8>,
+    pub message_type: Option<u16>,
+    pub tts: Option<bool>,
+    pub mention_everyone: Option<bool>,
+    #[serde(default)]
+    pub embeds: Vec<Embed>,
+    pub pinned: Option<bool>,
+    pub flags: Option<u64>,
+    pub seq: Option<u64>,
+    pub seq_in_channel: Option<String>,
+    pub message_scene: Option<MessageScene>,
+    #[serde(default)]
+    pub attachments: Vec<MessageAttachment>,
+    #[serde(default)]
+    pub mentions: Vec<User>,
+    pub ark_data: Option<ArkData>,
+    #[serde(default)]
+    pub msg_elements: Vec<MessageElement>,
+    pub message_reference: Option<MessageReference>,
+    pub ext_info: Option<MessageExtInfo>,
 }
 
 /// QQ API 统一分页结果。

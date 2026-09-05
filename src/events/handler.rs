@@ -15,9 +15,51 @@ type HandlerFuture = BoxFuture<'static, Result<()>>;
 type HandlerFn = dyn Fn(EventEnvelope, Arc<QQBotClient>) -> HandlerFuture + Send + Sync;
 type HandlerMap = HashMap<String, Vec<Arc<dyn ErasedHandler>>>;
 
+/// [`EventRouter`] 在处理器运行前注入的强类型事件上下文。
+///
+/// 上下文仅保存客户端和网关事件信封元数据，事件专属的 ID 仍保留在事件对象中。
+#[derive(Clone)]
+pub struct EventContext {
+    client: Arc<QQBotClient>,
+    pub event_id: Option<String>,
+    pub event_name: String,
+    pub sequence: Option<i64>,
+}
+
+impl std::fmt::Debug for EventContext {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("EventContext")
+            .field("event_id", &self.event_id)
+            .field("event_name", &self.event_name)
+            .field("sequence", &self.sequence)
+            .finish()
+    }
+}
+
+impl EventContext {
+    pub(crate) fn new(envelope: &EventEnvelope, client: Arc<QQBotClient>) -> Self {
+        Self {
+            client,
+            event_id: envelope.id.clone(),
+            event_name: envelope.name.clone(),
+            sequence: envelope.sequence,
+        }
+    }
+
+    pub(crate) fn client(&self) -> Arc<QQBotClient> {
+        self.client.clone()
+    }
+}
+
 /// 可通过 [`EventRouter::on`] 注册的强类型事件。
 pub trait Event: DeserializeOwned + Send + Sync + 'static {
     const NAME: &'static str;
+    const NAMES: &'static [&'static str] = &[Self::NAME];
+
+    /// 为解析后的事件附加运行时客户端和网关元数据。
+    /// 自定义事件可以忽略此钩子；内置消息事件通过它提供 `reply()`、`group()` 等会话实体方法。
+    fn attach_context(&mut self, _context: EventContext) {}
 }
 
 /// 接收原始事件信封的处理器抽象，适合封装跨事件的公共逻辑。
@@ -67,41 +109,48 @@ impl EventRouter {
     /// 注册一个实现了 [`EventHandler`] 的处理器到所有事件。
     pub async fn add_handler<H: EventHandler + 'static>(&self, handler: H) {
         let handler = Arc::new(handler);
-        let wrapped = ClosureHandler {
+        let wrapped: Arc<dyn ErasedHandler> = Arc::new(ClosureHandler {
             call_fn: Arc::new(move |event, client| {
                 let handler = handler.clone();
                 Box::pin(async move { handler.handle(event, client).await })
             }),
-        };
+        });
         self.handlers
             .write()
             .await
             .entry("*".into())
             .or_default()
-            .push(Arc::new(wrapped));
+            .push(wrapped);
     }
 
     /// 注册一个强类型事件处理器。
     pub async fn on<T, F, Fut>(&self, handler: F)
     where
         T: Event,
-        F: Fn(T, Arc<QQBotClient>) -> Fut + Send + Sync + 'static,
+        F: Fn(T) -> Fut + Send + Sync + 'static,
         Fut: std::future::Future<Output = Result<()>> + Send + 'static,
     {
         let handler = Arc::new(handler);
-        let wrapped = ClosureHandler {
+        let wrapped: Arc<dyn ErasedHandler> = Arc::new(ClosureHandler {
             call_fn: Arc::new(move |event, client| {
-                let result = serde_json::from_value::<T>(event.data).map_err(SdkError::from);
+                let context = EventContext::new(&event, client.clone());
+                let result = serde_json::from_value::<T>(event.data)
+                    .map(|mut parsed| {
+                        parsed.attach_context(context);
+                        parsed
+                    })
+                    .map_err(SdkError::from);
                 let handler = handler.clone();
-                Box::pin(async move { handler(result?, client).await })
+                Box::pin(async move { handler(result?).await })
             }),
-        };
-        self.handlers
-            .write()
-            .await
-            .entry(T::NAME.into())
-            .or_default()
-            .push(Arc::new(wrapped));
+        });
+        let mut handlers = self.handlers.write().await;
+        for name in T::NAMES {
+            handlers
+                .entry((*name).into())
+                .or_default()
+                .push(wrapped.clone());
+        }
     }
 
     /// 注册接收所有未知事件的原始处理器。

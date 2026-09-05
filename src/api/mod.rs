@@ -26,7 +26,7 @@ pub(crate) fn segment(value: &str) -> String {
     urlencoding::encode(value).into_owned()
 }
 
-/// Build a query list while omitting unset values.
+/// 构建查询参数列表，并省略未设置的参数。
 pub(crate) fn optional_query<'a>(
     values: impl IntoIterator<Item = (&'a str, Option<String>)>,
 ) -> Vec<(&'a str, String)> {
