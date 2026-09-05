@@ -27,7 +27,7 @@
 
 ```toml
 [dependencies]
-qqbot-sdk-rs = { path = "../qqbot-sdk-rs" }
+qqbot-sdk-rs = { git = "https://github.com/Lovely-02/qqbot-sdk-rs.git", branch = "main" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 serde_json = "1"
 async-trait = "0.1"
@@ -632,7 +632,27 @@ router.dispatch(EventEnvelope {
 # }
 ```
 
-### 7.3 WebSocket 网关
+### 7.3 事件中文名称和日志
+
+SDK 会在事件路由开始和结束时记录统一日志，保留官方事件名，同时增加易读的中文名称：
+
+```text
+INFO 收到事件 event_type=MESSAGE_CREATE event_name=频道消息
+INFO 事件处理完成 event_type=GROUP_AT_MESSAGE_CREATE event_name=群@消息
+```
+
+可调用公共函数获取名称：
+
+```rust
+use qqbot_sdk_rs::event_display_name;
+
+let display_name = event_display_name("C2C_MESSAGE_CREATE");
+assert_eq!(display_name, "私聊消息");
+```
+
+当前内置名称覆盖频道、子频道、频道成员、频道消息、频道私信、好友、群、互动、审核、论坛、音频和网关生命周期事件，包括 `GUILD_CREATE`、`MESSAGE_CREATE`、`DIRECT_MESSAGE_CREATE`、`C2C_MESSAGE_CREATE`、`C2C_MSG_RECEIVE`、`GROUP_AT_MESSAGE_CREATE`、`INTERACTION_CREATE`、`FORUM_THREAD_CREATE`、`AUDIO_START`、`READY` 和 `RESUMED` 等。`GROUP_MEMBER_DEL` 与 `GROUP_MEMBER_REMOVE` 都表示群成员移除；未知事件显示为 `未知事件`。
+
+### 7.4 WebSocket 网关
 
 ```rust,no_run
 use std::sync::Arc;
@@ -657,7 +677,7 @@ async fn main() -> Result<()> {
 
 SDK 会处理获取 `/gateway`、Hello、Identify/Resume、心跳、READY、断线重连和事件分发。`auto_reconnect = false` 时，连接错误会直接返回。
 
-### 7.4 Webhook 验签
+### 7.5 Webhook 验签
 
 ```rust,no_run
 use qqbot_sdk_rs::{Result, Webhook, WebhookVerifier};

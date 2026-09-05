@@ -1,3 +1,4 @@
+use super::event_display_name;
 use crate::{
     client::QQBotClient,
     error::{Result, SdkError},
@@ -8,7 +9,7 @@ use serde::de::DeserializeOwned;
 use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
-use tracing::{Instrument, debug, info_span};
+use tracing::{Instrument, debug, info, info_span};
 
 type HandlerFuture = BoxFuture<'static, Result<()>>;
 type HandlerFn = dyn Fn(EventEnvelope, Arc<QQBotClient>) -> HandlerFuture + Send + Sync;
@@ -126,6 +127,14 @@ impl EventRouter {
 
     /// 分发一个事件；同名处理器按注册顺序执行。
     pub async fn dispatch(&self, envelope: EventEnvelope, client: Arc<QQBotClient>) -> Result<()> {
+        let display_name = event_display_name(&envelope.name);
+        info!(
+            event_type = %envelope.name,
+            event_name = %display_name,
+            event_id = ?envelope.id,
+            sequence = ?envelope.sequence,
+            "收到事件"
+        );
         let mut handlers = self
             .handlers
             .read()
@@ -143,14 +152,30 @@ impl EventRouter {
         );
         let trace_id = crate::client::next_span_id();
         let span_id = crate::client::next_span_id();
-        let span = info_span!("event", event_type = %envelope.name, event_id = ?envelope.id, trace_id, span_id);
+        let span = info_span!(
+            "event",
+            event_type = %envelope.name,
+            event_name = %display_name,
+            event_id = ?envelope.id,
+            trace_id,
+            span_id
+        );
         for handler in handlers {
             handler
                 .call(envelope.clone(), client.clone())
                 .instrument(span.clone())
                 .await?;
         }
-        debug!(event_type = %envelope.name, "事件处理完成");
+        info!(
+            event_type = %envelope.name,
+            event_name = %display_name,
+            "事件处理完成"
+        );
+        debug!(
+            event_type = %envelope.name,
+            event_name = %display_name,
+            "事件处理完成（调试详情）"
+        );
         Ok(())
     }
 }

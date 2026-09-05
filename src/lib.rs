@@ -24,7 +24,7 @@ pub use error::{Result, SdkError};
 pub use events::{
     C2cMessageReceive, C2cMsgReceive, CallbackValidationResponse, Event, EventEnvelope,
     EventHandler, EventRouter, FriendAdd, GatewayClient, GatewayConfig, GroupAtMessageCreate,
-    InteractionCreate, MessageCreateEvent, OpCode, Payload, ReadyEvent,
+    InteractionCreate, MessageCreateEvent, OpCode, Payload, ReadyEvent, event_display_name,
 };
 pub use intents::{GuildMode, Intents};
 pub use logging::{Format as LogFormat, LogTarget, SakuraLogger, WorkerGuard};

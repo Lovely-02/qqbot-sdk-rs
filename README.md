@@ -21,7 +21,7 @@
 
 ```toml
 [dependencies]
-qqbot-sdk-rs = { path = "../qqbot-sdk-rs" }
+qqbot-sdk-rs = { git = "https://github.com/Lovely-02/qqbot-sdk-rs.git", branch = "main" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 serde_json = "1"
 ```
@@ -103,6 +103,15 @@ async fn main() -> Result<()> {
 ```
 
 公域频道通常只能收到 `@机器人` 的消息；私域频道使用 `GuildMode::Private`。好友和群事件需要打开对应的 Intents，详见开发文档的“事件与网关”。
+
+SDK 的事件日志会同时打印官方事件名和中文名称，例如：
+
+```text
+INFO 收到事件 event_type=MESSAGE_CREATE event_name=频道消息
+INFO 事件处理完成 event_type=GROUP_AT_MESSAGE_CREATE event_name=群@消息
+```
+
+也可以在业务日志或自定义处理器中调用 `qqbot_sdk_rs::event_display_name("MESSAGE_CREATE")` 获取中文名称；平台新增事件会返回 `未知事件`，但不会影响原始事件分发。
 
 ## 消息类型速记
 
