@@ -1,11 +1,124 @@
-//! 开箱即用的 tracing 日志配置。
+//! 日志配置。
 
 use crate::error::{Result, SdkError};
-use std::{io::Write, path::PathBuf};
+use std::{fmt as stdfmt, io::Write, path::PathBuf};
+use time::OffsetDateTime;
 use time::macros::format_description;
+use tracing::{
+    Event, Subscriber,
+    field::{Field, Visit},
+};
 use tracing_appender::{non_blocking, rolling};
-use tracing_subscriber::fmt::time::UtcTime;
-use tracing_subscriber::{EnvFilter, fmt};
+use tracing_subscriber::{
+    EnvFilter,
+    fmt::{
+        self, FmtContext, FormattedFields,
+        format::{FormatEvent, FormatFields, Writer},
+    },
+    registry::LookupSpan,
+};
+
+/// 业务事件日志目标。
+pub(crate) const EVENT_LOG_TARGET: &str = "qqbot_sdk_rs::event";
+
+/// API 原始错误日志目标。
+pub(crate) const API_ERROR_LOG_TARGET: &str = "qqbot_sdk_rs::api_error";
+
+/// 单行日志格式器。
+#[derive(Debug, Clone, Copy)]
+struct TextEventFormatter;
+
+/// 日志字段。
+#[derive(Default)]
+struct EventFields {
+    message: Option<String>,
+    fields: Vec<(String, String)>,
+}
+
+impl EventFields {
+    fn record(&mut self, field: &Field, value: String) {
+        if field.name() == "message" {
+            self.message = Some(value);
+        } else {
+            self.fields.push((field.name().to_owned(), value));
+        }
+    }
+
+    fn debug_value(value: &dyn stdfmt::Debug) -> String {
+        let value = format!("{value:?}");
+        value
+            .strip_prefix('"')
+            .and_then(|value| value.strip_suffix('"'))
+            .map_or(value.clone(), str::to_owned)
+    }
+}
+
+impl Visit for EventFields {
+    fn record_str(&mut self, field: &Field, value: &str) {
+        self.record(field, value.to_owned());
+    }
+
+    fn record_debug(&mut self, field: &Field, value: &dyn stdfmt::Debug) {
+        self.record(field, Self::debug_value(value));
+    }
+}
+
+/// 将日志正文压成一行。
+fn one_line(value: &str) -> String {
+    value.replace(['\r', '\n'], " ").trim().to_owned()
+}
+
+impl<S, N> FormatEvent<S, N> for TextEventFormatter
+where
+    S: Subscriber + for<'lookup> LookupSpan<'lookup>,
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
+    fn format_event(
+        &self,
+        context: &FmtContext<'_, S, N>,
+        mut writer: Writer<'_>,
+        event: &Event<'_>,
+    ) -> stdfmt::Result {
+        let timestamp = OffsetDateTime::now_utc()
+            .format(format_description!(
+                "[year]-[month]-[day] [hour]:[minute]:[second]"
+            ))
+            .map_err(|_| stdfmt::Error)?;
+        write!(writer, "{timestamp}")?;
+
+        let mut fields = EventFields::default();
+        event.record(&mut fields);
+        if event.metadata().target() != EVENT_LOG_TARGET {
+            write!(writer, " [{}]", event.metadata().level())?;
+        }
+
+        let preserve_message = event.metadata().target() == API_ERROR_LOG_TARGET;
+        if let Some(message) = fields.message {
+            if preserve_message {
+                write!(writer, " {message}")?;
+            } else {
+                write!(writer, " {}", one_line(&message))?;
+            }
+        }
+        for (name, value) in fields.fields {
+            write!(writer, " {name}={}", one_line(&value))?;
+        }
+        if event.metadata().target() != EVENT_LOG_TARGET
+            && event.metadata().target() != API_ERROR_LOG_TARGET
+            && let Some(scope) = context.event_scope()
+        {
+            for span in scope.from_root() {
+                let extensions = span.extensions();
+                if let Some(fields) = extensions.get::<FormattedFields<N>>()
+                    && !fields.is_empty()
+                {
+                    write!(writer, " {fields}")?;
+                }
+            }
+        }
+        writeln!(writer)
+    }
+}
 
 /// 日志输出格式。
 #[derive(Debug, Clone, Copy)]
@@ -27,10 +140,10 @@ pub enum LogTarget {
     FileHourly(PathBuf),
 }
 
-/// 日志初始化守卫；文件日志必须保持该值存活以完成异步写入。
+/// 日志写入守卫。
 pub type WorkerGuard = tracing_appender::non_blocking::WorkerGuard;
 
-/// Sakura 风格的日志 Builder。
+/// 日志配置器。
 #[derive(Debug, Clone)]
 pub struct SakuraLogger {
     format: Format,
@@ -51,12 +164,12 @@ impl Default for SakuraLogger {
 }
 
 impl SakuraLogger {
-    /// 返回默认漂亮格式 Builder。
+    /// 创建默认配置。
     pub fn builder() -> Self {
         Self::default()
     }
 
-    /// 使用默认配置初始化全局日志订阅器。
+    /// 初始化默认日志。
     pub fn init() -> Result<WorkerGuard> {
         Self::default().try_init()
     }
@@ -66,12 +179,12 @@ impl SakuraLogger {
         self.format = format;
         self
     }
-    /// 开关 ANSI 彩色输出。
+    /// 设置 ANSI 彩色输出。
     pub fn with_ansi(mut self, ansi: bool) -> Self {
         self.ansi = ansi;
         self
     }
-    /// 设置默认日志级别；若设置了 `RUST_LOG`，环境变量优先。
+    /// 设置默认等级，`RUST_LOG` 优先。
     pub fn with_level(mut self, level: impl Into<String>) -> Self {
         self.level = level.into();
         self
@@ -82,7 +195,7 @@ impl SakuraLogger {
         self
     }
 
-    /// 初始化全局订阅器并返回异步写入守卫。
+    /// 初始化日志并返回写入守卫。
     pub fn try_init(self) -> Result<WorkerGuard> {
         let writer: Box<dyn Write + Send> = match &self.target {
             LogTarget::Stdout => Box::new(std::io::stdout()),
@@ -98,18 +211,17 @@ impl SakuraLogger {
                 .with_env_filter(filter)
                 .with_writer(writer)
                 .with_ansi(self.ansi)
-                .with_timer(UtcTime::new(format_description!(
-                    "[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]"
-                )))
-                .pretty()
+                .event_format(TextEventFormatter)
                 .try_init(),
             Format::Json => fmt::Subscriber::builder()
                 .with_env_filter(filter)
                 .with_writer(writer)
                 .with_ansi(false)
-                .with_timer(UtcTime::new(format_description!(
-                    "[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]"
-                )))
+                .with_timer(tracing_subscriber::fmt::time::UtcTime::new(
+                    format_description!(
+                        "[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]"
+                    ),
+                ))
                 .json()
                 .with_current_span(true)
                 .with_span_list(true)

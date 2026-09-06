@@ -4,16 +4,16 @@ use crate::{
 };
 use serde_json::{Value, json};
 
-/// 图片、视频和语音消息段使用的富媒体来源。
+/// 富媒体来源。
 #[derive(Debug, Clone)]
 pub enum MediaSource {
-    /// 可以是网络地址、本地路径、`base64://` 数据或 Base64 数据地址。
+    /// 网络地址、本地路径或 Base64 数据。
     Location(String),
     /// 原始文件字节。
     Bytes(Vec<u8>),
 }
 
-/// 在确定目标会话前暂存的富媒体信息。
+/// 待上传的富媒体。
 #[derive(Debug, Clone)]
 pub struct MediaSegment {
     pub file_type: u8,
@@ -21,7 +21,7 @@ pub struct MediaSegment {
     pub name: Option<String>,
 }
 
-/// 可组合的发送消息段。
+/// 可组合消息段。
 #[derive(Debug, Clone)]
 pub enum MessageSegment {
     Text(String),
@@ -30,16 +30,15 @@ pub enum MessageSegment {
     Image(MediaSegment),
     Video(MediaSegment),
     Audio(MediaSegment),
+    File(MediaSegment),
     Markdown(Value),
     InputNotify(InputNotify),
     Keyboard(Keyboard),
     Button(Value),
     Link(String),
-    /// 将已有消息作为引用消息展示。
-    ///
-    /// 该消息段与 `Event::reply` 和 `reply_*` API 方法使用的被动回复元数据相互独立。
+    /// 引用已有消息，与被动回复无关。
     Reply(String),
-    /// 被动回复元数据；事件处理器中建议直接调用 `event.reply(...)`。
+    /// 被动回复元数据。
     PassiveReply {
         msg_id: Option<String>,
         event_id: Option<String>,
@@ -61,7 +60,7 @@ impl From<&str> for MessageSegment {
     }
 }
 
-/// 消息接口和会话实体 `send` 方法接受的内容类型。
+/// 可发送的消息内容。
 #[derive(Debug, Clone)]
 pub enum Sendable {
     Request(Box<MessageRequest>),
@@ -129,7 +128,7 @@ pub(crate) struct BuiltMessage {
     pub channel_only_content: bool,
 }
 
-/// 将消息段列表转换为 QQ 消息请求体。
+/// 消息段构建器。
 #[derive(Debug, Default)]
 pub struct MessageBuilder {
     request: MessageRequest,
@@ -143,7 +142,7 @@ impl MessageBuilder {
         Self::default()
     }
 
-    /// 从不需要根据目标会话上传文件的消息段构建请求。
+    /// 构建无需上传的消息请求。
     pub fn build<I, S>(self, segments: I) -> Result<MessageRequest>
     where
         I: IntoIterator<Item = S>,
@@ -152,7 +151,7 @@ impl MessageBuilder {
         let built = self.build_parts(segments.into_iter().map(Into::into))?;
         if built.media.is_some() {
             return Err(SdkError::InvalidInput(
-                "图片、视频或音频消息段需要通过 send_* 方法发送，以便 SDK 自动上传".into(),
+                "图片、视频、音频或文件消息段需要通过 send_* 方法发送，以便 SDK 自动上传".into(),
             ));
         }
         Ok(built.request)
@@ -223,7 +222,6 @@ impl MessageBuilder {
             MessageSegment::Button(button) => self.buttons.push(button),
             MessageSegment::Ark(ark) => {
                 self.request.ark = Some(ark);
-                self.request.msg_type = Some(3);
             }
             MessageSegment::Embed(embed) => {
                 self.request.embed = Some(embed);
@@ -234,7 +232,8 @@ impl MessageBuilder {
             }
             MessageSegment::Image(media)
             | MessageSegment::Video(media)
-            | MessageSegment::Audio(media) => {
+            | MessageSegment::Audio(media)
+            | MessageSegment::File(media) => {
                 if self.media.is_some() || self.request.media.is_some() {
                     return Err(SdkError::InvalidInput(
                         "一条消息只能包含一个待上传的富媒体消息段".into(),
@@ -279,7 +278,7 @@ impl MessageRequest {
         }
     }
 
-    /// 从不需要上传文件的消息段构建请求。
+    /// 从无需上传的消息段构建请求。
     pub fn from_segments<I, S>(segments: I) -> Result<Self>
     where
         I: IntoIterator<Item = S>,
@@ -333,16 +332,26 @@ pub fn audio_bytes(data: impl AsRef<[u8]>) -> MessageSegment {
     media_bytes(3, data)
 }
 
+/// 创建文件消息段。
+pub fn file(file: impl Into<String>) -> MessageSegment {
+    media_location(4, file)
+}
+
+/// 从字节创建文件消息段。
+pub fn file_bytes(data: impl AsRef<[u8]>) -> MessageSegment {
+    media_bytes(4, data)
+}
+
 pub fn markdown(content: impl Into<String>) -> MessageSegment {
     MessageSegment::Markdown(json!({ "content": content.into() }))
 }
 
 pub fn markdown_template(
-    template_id: impl Into<String>,
+    template_id: u32,
     params: impl IntoIterator<Item = Value>,
 ) -> MessageSegment {
     MessageSegment::Markdown(json!({
-        "custom_template_id": template_id.into(),
+        "template_id": template_id,
         "params": params.into_iter().collect::<Vec<_>>(),
     }))
 }
@@ -399,10 +408,7 @@ pub fn reply_event(event_id: impl Into<String>) -> MessageSegment {
 }
 
 pub fn ark(template_id: u32, kv: Vec<Value>) -> MessageSegment {
-    MessageSegment::Ark(Ark {
-        template_id,
-        kv: Some(kv),
-    })
+    MessageSegment::Ark(Ark { template_id, kv })
 }
 
 pub fn embed(
@@ -436,7 +442,8 @@ fn media_location(file_type: u8, file: impl Into<String>) -> MessageSegment {
     match file_type {
         1 => MessageSegment::Image(media),
         2 => MessageSegment::Video(media),
-        _ => MessageSegment::Audio(media),
+        3 => MessageSegment::Audio(media),
+        _ => MessageSegment::File(media),
     }
 }
 
@@ -449,6 +456,7 @@ fn media_bytes(file_type: u8, data: impl AsRef<[u8]>) -> MessageSegment {
     match file_type {
         1 => MessageSegment::Image(media),
         2 => MessageSegment::Video(media),
-        _ => MessageSegment::Audio(media),
+        3 => MessageSegment::Audio(media),
+        _ => MessageSegment::File(media),
     }
 }

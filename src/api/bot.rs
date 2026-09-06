@@ -25,9 +25,15 @@ impl<'a> BotApi<'a> {
             .await
     }
 
-    /// 获取当前机器人可访问的频道列表。
-    pub async fn guilds(&self, after: Option<&str>, limit: Option<u16>) -> Result<Vec<Guild>> {
+    /// 获取可访问频道列表，支持 `before`、`after`、`limit` 分页。
+    pub async fn guilds(
+        &self,
+        before: Option<&str>,
+        after: Option<&str>,
+        limit: Option<u16>,
+    ) -> Result<Vec<Guild>> {
         let query = optional_query([
+            ("before", before.map(str::to_owned)),
             ("after", after.map(str::to_owned)),
             ("limit", limit.map(|value| value.to_string())),
         ]);
@@ -39,11 +45,6 @@ impl<'a> BotApi<'a> {
                 &query,
             )
             .await
-    }
-
-    /// 获取当前机器人可访问的频道列表（`guilds` 的语义别名）。
-    pub async fn list_guilds(&self, after: Option<&str>, limit: Option<u16>) -> Result<Vec<Guild>> {
-        self.guilds(after, limit).await
     }
 
     /// 创建频道私信（返回 `guild_id` 和 `channel_id`）。

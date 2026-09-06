@@ -37,9 +37,6 @@ use qqbot_sdk_rs::{Bot, Result};
 #[tokio::main]
 async fn main() -> Result<()> {
     let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
-    let message = bot.api().channels().get_message("CHANNEL_ID", "MESSAGE_ID").await?;
-    println!("消息内容：{:?}", message.content);
-
     bot.api().channels().recall_message("CHANNEL_ID", "MESSAGE_ID", true).await?;
     Ok(())
 }
@@ -48,13 +45,12 @@ async fn main() -> Result<()> {
 常用接口：
 
 - `messages().send_channel`、`reply_channel`：发送或回复子频道消息。
-- `channels().get_message`、`update_message`：读取或更新消息。
 - `channels().add_reaction`、`remove_reaction`、`list_reactions`：表情回应。
 - `channels().list_threads`、`get_thread`、`create_thread`、`delete_thread`：帖子。
 - `channels().pin_message`、`unpin_message`、`list_pins`：精华或置顶。
 - `channels().create_schedule`、`list_schedules`、`get_schedule`、`update_schedule`、`delete_schedule`：日程。
 - `channels().create_announcement`、`delete_announcement`：发布或删除子频道公告。
-- `channels().voice_members`、`audio_control`、`enable_mic`、`disable_mic`：语音频道状态和音频控制。
+- `channels().online_numbers`、`audio_control`、`enable_mic`、`disable_mic`：语音频道状态和音频控制。
 - `channels().member_permissions`、`role_permissions`、`update_member_permissions`、`update_role_permissions`：子频道权限。
 
 ## 频道管理 🛠️
@@ -91,7 +87,10 @@ use serde_json::json;
 #[tokio::main]
 async fn main() -> Result<()> {
     let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
-    let dm = bot.api().bot().create_dm(&json!({ "recipient_id": "USER_ID" })).await?;
+    let dm = bot.api().bot().create_dm(&json!({
+        "recipient_id": "USER_ID",
+        "source_guild_id": "SOURCE_GUILD_ID"
+    })).await?;
     let guild_id = dm["guild_id"].as_str().expect("官方响应缺少 guild_id");
     bot.direct(guild_id)
         .send(segment::text("这是频道私信，不是 C2C 单聊哦～"))
@@ -106,4 +105,4 @@ async fn main() -> Result<()> {
 
 - [频道消息事件](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/channel/message/event.html)
 - [发送子频道消息](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/channel/message/send.html)
-- [频道管理 API](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/guild/overview.html)
+- [频道管理 API](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/channel/manage/)

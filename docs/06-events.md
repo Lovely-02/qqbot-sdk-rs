@@ -36,17 +36,26 @@ async fn main() -> Result<()> {
 
 ## 内置事件类型 📡
 
-| 类型                   | 官方事件名                             | 辅助方法                     |
-| ---------------------- | -------------------------------------- | ---------------------------- |
-| `MessageCreateEvent`   | `MESSAGE_CREATE` / `AT_MESSAGE_CREATE` | `reply`、`channel`、`guild`  |
-| `DirectMessageCreate`  | `DIRECT_MESSAGE_CREATE`                | `reply`、`direct`、`channel` |
-| `C2cMessageReceive`    | `C2C_MESSAGE_CREATE`                   | `reply`、`user`              |
-| `C2cMsgReceive`        | `C2C_MSG_RECEIVE`                      | `reply`、`user`              |
-| `GroupAtMessageCreate` | `GROUP_AT_MESSAGE_CREATE`              | `reply`、`group`             |
-| `GroupMessageCreate`   | `GROUP_MESSAGE_CREATE`                 | `reply`、`group`             |
-| `FriendAdd`            | `FRIEND_ADD`                           | `reply`、`user`              |
-| `FriendDelete`         | `FRIEND_DEL`                           | 读取好友删除信息             |
-| `InteractionCreate`    | `INTERACTION_CREATE`                   | 读取互动数据                 |
+| 类型                                                | 官方事件名                                             | 辅助方法                      |
+| --------------------------------------------------- | ------------------------------------------------------ | ----------------------------- |
+| `MessageCreateEvent`                                | `MESSAGE_CREATE` / `AT_MESSAGE_CREATE`                 | `reply`、`channel`、`guild`   |
+| `DirectMessageCreate`                               | `DIRECT_MESSAGE_CREATE`                                | `reply`、`direct`、`channel`  |
+| `C2cMessageReceive`                                 | `C2C_MESSAGE_CREATE`                                   | `reply`、`user`               |
+| `C2cMsgReceive`                                     | `C2C_MSG_RECEIVE`                                      | `reply`、`user`               |
+| `C2cMsgReject`                                      | `C2C_MSG_REJECT`                                       | `user`                        |
+| `GroupAtMessageCreate`                              | `GROUP_AT_MESSAGE_CREATE`                              | `reply`、`group`              |
+| `GroupMessageCreate`                                | `GROUP_MESSAGE_CREATE`                                 | `reply`、`group`              |
+| `FriendAdd`                                         | `FRIEND_ADD`                                           | `reply`、`user`               |
+| `FriendDelete`                                      | `FRIEND_DEL`                                           | 读取好友删除信息              |
+| `GroupMemberAdd` / `GroupMemberRemove`              | `GROUP_MEMBER_ADD` / `GROUP_MEMBER_REMOVE`             | `group`、`member`、`user`     |
+| `GroupAddRobot` / `GroupDelRobot`                   | `GROUP_ADD_ROBOT` / `GROUP_DEL_ROBOT`                  | `group`；加入事件支持 `reply` |
+| `GroupJoinRequest`                                  | `GROUP_JOIN_REQUEST`                                   | `group`、`member`             |
+| `GroupMessageSetting`                               | `GROUP_MSG_RECEIVE` / `GROUP_MSG_REJECT`               | `group`；开启事件支持 `reply` |
+| `SubscribeMessageStatus`                            | `SUBSCRIBE_MESSAGE_STATUS`                             | `group`、`user`               |
+| `InteractionCreate`                                 | `INTERACTION_CREATE`                                   | 读取互动数据                  |
+| `GuildCreate` / `GuildUpdate` / `GuildDelete`       | `GUILD_CREATE` / `GUILD_UPDATE` / `GUILD_DELETE`       | `guild`                       |
+| `ChannelCreate` / `ChannelUpdate` / `ChannelDelete` | `CHANNEL_CREATE` / `CHANNEL_UPDATE` / `CHANNEL_DELETE` | `channel`、`guild`            |
+| `MessageAuditPass` / `MessageAuditReject`           | `MESSAGE_AUDIT_PASS` / `MESSAGE_AUDIT_REJECT`          | 读取审核信息                  |
 
 事件中未提供必要 ID 时，辅助方法会返回 `SdkError::InvalidInput`，不会构造一个指向未知目标的请求。
 
@@ -54,14 +63,22 @@ async fn main() -> Result<()> {
 
 `Intents` 是官方网关订阅位掩码：
 
-| 常量                             | 用途                      |
-| -------------------------------- | ------------------------- |
-| `Intents::PUBLIC_GUILD_MESSAGES` | 公域频道中的 @ 机器人消息 |
-| `Intents::GUILD_MESSAGES`        | 私域频道消息              |
-| `Intents::DIRECT_MESSAGE`        | 频道私信                  |
-| `Intents::GROUP_AND_C2C_EVENT`   | 群聊、单聊和好友事件      |
+| 常量                               | 用途                      |
+| ---------------------------------- | ------------------------- |
+| `Intents::PUBLIC_GUILD_MESSAGES`   | 公域频道中的 @ 机器人消息 |
+| `Intents::GUILD_MESSAGES`          | 私域频道消息              |
+| `Intents::GUILDS`                  | 频道、子频道基础事件      |
+| `Intents::GUILD_MEMBERS`           | 频道成员事件              |
+| `Intents::GUILD_MESSAGE_REACTIONS` | 频道表情表态事件          |
+| `Intents::DIRECT_MESSAGE`          | 频道私信                  |
+| `Intents::GROUP_MEMBER_EVENT`      | 入群申请和群成员事件      |
+| `Intents::GROUP_AND_C2C_EVENT`     | 群聊、单聊和好友事件      |
+| `Intents::INTERACTION`             | 互动事件                  |
+| `Intents::MESSAGE_AUDIT`           | 消息审核结果事件          |
+| `Intents::FORUMS_EVENT`            | 论坛事件（仅私域）        |
+| `Intents::AUDIO_ACTION`            | 音频动作事件              |
 
-常用组合是 `Intents::for_mode(GuildMode::Public, true, true)`。公域频道通常只收到 @ 机器人的消息；私域频道使用 `GuildMode::Private`，仍需按官方权限配置。
+`Intents::for_mode` 自动加入 `GUILDS` 与公域/私域频道消息位；单聊、群聊、频道私信和其他特殊位需要在开放平台开通权限后显式加入，避免鉴权时触发 `4014`。
 
 ## 原始事件与未知事件 🧪
 
@@ -80,7 +97,7 @@ async fn register(router: &EventRouter) {
 }
 ```
 
-`EventEnvelope` 包含 `id`、`name`、`sequence` 和原始 `data`。日志会同时记录官方事件名和中文显示名，未知事件会显示为 `未知事件`，但仍会正常分发。
+`EventEnvelope` 包含 `id`、`name`、`sequence` 和原始 `data`。SDK 会把消息、群成员变更、按钮互动、好友变化、频道变更、审核和音频等官方事件统一输出为一行日志；未知事件显示为 `未知事件`，但仍会正常分发。
 
 ## Webhook 验签 🔐
 
@@ -103,11 +120,13 @@ async fn handle_webhook(
 }
 ```
 
-回调地址验证请求可以使用 `Webhook::validation_response(body, app_secret)` 生成官方要求的 `plain_token` 和签名响应。不要跳过验签，也不要把 `BOT_SECRET` 与 `APP_SECRET` 混放。
+回调地址验证请求可以使用 `Webhook::validation_response(body, bot_secret)` 生成官方要求的 `plain_token` 和签名响应。不要跳过验签，也不要把 `BOT_SECRET` 与 `APP_SECRET` 混放。
+
+普通事件处理完成后，Webhook 接入方可以返回 `Webhook::acknowledgement()` 生成的 `{"op":12}`，表示已收到平台推送；回调地址验证请求则返回 `validation_response(...)` 的 JSON。
 
 ## 官方资料 📚
 
 - [事件订阅](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/channel/message/event.html)
-- [网关连接](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/gateway.html)
+- [网关连接](https://bot.q.qq.com/wiki/develop/api-v2/dev-prepare/event-emit/websocket.html)
 - [单聊事件](https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/c2c_message_create.html)
 - [群 @ 事件](https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_at_message_create.html)

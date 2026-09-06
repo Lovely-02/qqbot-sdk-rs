@@ -9,17 +9,6 @@ pub struct UserApi<'a> {
 }
 
 impl<'a> UserApi<'a> {
-    /// 获取单聊用户信息。
-    pub async fn get(&self, openid: &str) -> Result<User> {
-        self.client
-            .request_json(
-                Method::GET,
-                &format!("/v2/users/{}", segment(openid)),
-                Option::<&serde_json::Value>::None,
-            )
-            .await
-    }
-
     /// 获取机器人自身信息。
     pub async fn me(&self) -> Result<User> {
         self.client
@@ -29,10 +18,12 @@ impl<'a> UserApi<'a> {
     /// 获取机器人加入的频道列表。
     pub async fn guilds(
         &self,
+        before: Option<&str>,
         after: Option<&str>,
         limit: Option<u16>,
     ) -> Result<Vec<crate::models::Guild>> {
         let query = optional_query([
+            ("before", before.map(str::to_owned)),
             ("after", after.map(str::to_owned)),
             ("limit", limit.map(|value| value.to_string())),
         ]);

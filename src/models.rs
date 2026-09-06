@@ -1,16 +1,19 @@
 use serde::{Deserialize, Deserializer, Serialize, de::Error as DeError};
 use serde_json::Value;
 
-/// QQ 用户信息的常用字段。
+/// QQ 用户信息。
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct User {
     pub id: Option<String>,
     pub username: Option<String>,
     pub avatar: Option<String>,
     pub bot: Option<bool>,
+    pub public_flags: Option<u64>,
+    pub system: Option<bool>,
     pub union_openid: Option<String>,
-    pub openid: Option<String>,
     pub union_user_account: Option<String>,
+    pub share_url: Option<String>,
+    pub welcome_msg: Option<String>,
     pub user_openid: Option<String>,
     pub member_openid: Option<String>,
     pub member_role: Option<String>,
@@ -25,10 +28,13 @@ pub struct FriendAuthor {
 /// QQ 群信息。
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Group {
-    pub id: Option<String>,
-    pub name: Option<String>,
-    pub member_count: Option<u64>,
-    pub max_member_count: Option<u64>,
+    pub group_openid: Option<String>,
+    pub group_name: Option<String>,
+    pub group_finger_memo: Option<String>,
+    pub group_class_text: Option<String>,
+    #[serde(default)]
+    pub group_tags: Vec<String>,
+    pub group_member_num: Option<u64>,
 }
 
 /// QQ 子频道信息。
@@ -37,9 +43,15 @@ pub struct Channel {
     pub id: Option<String>,
     pub guild_id: Option<String>,
     pub name: Option<String>,
-    pub r#type: Option<u8>,
-    #[serde(rename = "subtype")]
-    pub sub_type: Option<u8>,
+    pub r#type: Option<u32>,
+    pub sub_type: Option<u32>,
+    pub position: Option<u32>,
+    pub parent_id: Option<String>,
+    pub owner_id: Option<String>,
+    pub private_type: Option<u32>,
+    pub speak_permission: Option<u32>,
+    pub application_id: Option<String>,
+    pub permissions: Option<String>,
 }
 
 /// QQ 频道信息。
@@ -52,15 +64,33 @@ pub struct Guild {
     pub owner: Option<bool>,
     pub joined_at: Option<String>,
     pub description: Option<String>,
+    pub member_count: Option<u64>,
     pub max_members: Option<u64>,
+}
+
+/// 频道消息中附带的成员信息。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct GuildMember {
+    pub user: Option<User>,
+    pub joined_at: Option<String>,
+    #[serde(default)]
+    pub roles: Vec<String>,
+    pub nick: Option<String>,
+    pub deaf: Option<bool>,
+    pub mute: Option<bool>,
+    pub pending: Option<bool>,
 }
 
 /// 消息中的嵌入卡片。
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Embed {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub prompt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub thumbnail: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub fields: Option<Vec<Value>>,
 }
 
@@ -68,8 +98,8 @@ pub struct Embed {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Ark {
     pub template_id: u32,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub kv: Option<Vec<Value>>,
+    #[serde(default)]
+    pub kv: Vec<Value>,
 }
 
 /// 引用一条已有消息。
@@ -113,6 +143,31 @@ pub struct MessageScene {
     pub source: Option<String>,
     #[serde(default)]
     pub ext: Vec<String>,
+}
+
+impl MessageScene {
+    /// 读取 `key=value` 扩展字段。
+    pub fn extension(&self, key: &str) -> Option<&str> {
+        self.ext.iter().find_map(|item| {
+            let (item_key, value) = item.split_once('=')?;
+            (item_key == key).then_some(value)
+        })
+    }
+
+    /// 返回当前消息索引。
+    pub fn msg_idx(&self) -> Option<&str> {
+        self.extension("msg_idx")
+    }
+
+    /// 返回引用消息索引。
+    pub fn ref_msg_idx(&self) -> Option<&str> {
+        self.extension("ref_msg_idx")
+    }
+
+    /// 返回场景鉴权令牌。
+    pub fn auth_token(&self) -> Option<&str> {
+        self.extension("auth_token")
+    }
 }
 
 /// 接收消息中的结构化卡片数据。
@@ -199,6 +254,9 @@ pub struct MessageRequest {
     pub is_wakeup: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub input_notify: Option<InputNotify>,
+    /// 图片转存失败时是否终止 Markdown 发送。
+    #[serde(skip)]
+    pub force_verify_image_resource: Option<bool>,
 }
 
 /// QQ API 返回的消息对象。
@@ -209,8 +267,10 @@ pub struct Message {
     pub guild_id: Option<String>,
     pub content: Option<String>,
     pub timestamp: Option<String>,
+    pub edited_timestamp: Option<String>,
     pub author: Option<User>,
-    #[serde(rename = "type", alias = "msg_type")]
+    pub member: Option<GuildMember>,
+    #[serde(rename = "type")]
     pub msg_type: Option<u8>,
     pub message_type: Option<u16>,
     pub tts: Option<bool>,
@@ -226,11 +286,36 @@ pub struct Message {
     pub attachments: Vec<MessageAttachment>,
     #[serde(default)]
     pub mentions: Vec<User>,
+    pub ark: Option<Ark>,
     pub ark_data: Option<ArkData>,
     #[serde(default)]
     pub msg_elements: Vec<MessageElement>,
     pub message_reference: Option<MessageReference>,
     pub ext_info: Option<MessageExtInfo>,
+}
+
+/// 网关会话启动配额。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct SessionStartLimit {
+    /// 总启动次数。
+    pub total: u32,
+    /// 剩余启动次数。
+    pub remaining: u32,
+    /// 配额重置时间，单位毫秒。
+    pub reset_after: u64,
+    /// 最大并发数。
+    pub max_concurrency: u32,
+}
+
+/// `/gateway/bot` 响应。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct GatewayBotResponse {
+    /// WebSocket 网关地址。
+    pub url: String,
+    /// 建议分片数。
+    pub shards: u32,
+    /// 会话启动配额。
+    pub session_start_limit: SessionStartLimit,
 }
 
 /// QQ API 统一分页结果。

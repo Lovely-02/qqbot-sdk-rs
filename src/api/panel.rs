@@ -9,28 +9,26 @@ pub struct PanelApi<'a> {
 }
 
 impl<'a> PanelApi<'a> {
-    /// 获取面板列表。
-    pub async fn list(&self) -> Result<Value> {
-        self.client
-            .request_json(Method::GET, "/v2/panels", Option::<&Value>::None)
-            .await
-    }
-
-    /// 按场景和分页参数查询指令面板。
+    /// 按场景和分页参数查询面板；`scope` 支持 `c2c`、`group`、`channel`、`dm`。
     pub async fn list_with_options(
         &self,
-        scope: Option<&str>,
-        after: Option<&str>,
+        scope: &str,
+        cursor: Option<&str>,
         limit: Option<u16>,
     ) -> Result<Value> {
         let query = optional_query([
-            ("scope", scope.map(str::to_owned)),
-            ("after", after.map(str::to_owned)),
+            ("scope", Some(scope.to_owned())),
+            ("cursor", cursor.map(str::to_owned)),
             ("limit", limit.map(|value| value.to_string())),
         ]);
         self.client
             .request_json_query(Method::GET, "/v2/panels", Option::<&Value>::None, &query)
             .await
+    }
+
+    /// 获取指定场景的第一页面板。
+    pub async fn list(&self, scope: &str) -> Result<Value> {
+        self.list_with_options(scope, None, None).await
     }
     /// 创建面板。
     pub async fn create(&self, body: &Value) -> Result<Value> {

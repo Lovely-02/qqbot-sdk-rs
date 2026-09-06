@@ -1,7 +1,4 @@
 //! qqbot-sdk-rs：异步 QQ 机器人 SDK。
-//!
-//! SDK 将 HTTP API、网关事件、Webhook、鉴权和日志配置组织成几个相互独立的模块，
-//! 使用 [`QQBotClient`] 作为所有 API 调用的入口。
 
 pub mod api;
 pub mod auth;
@@ -22,19 +19,29 @@ pub use api::{
 };
 pub use auth::AccessTokenManager;
 pub use client::{Bot, BotMode, Client, ClientConfig, EventTransport, QQBotClient};
-pub use entities::{ChannelHandle, DirectHandle, GroupHandle, GuildHandle, UserHandle};
+pub use entities::{
+    ChannelHandle, DirectHandle, GroupHandle, GroupMemberHandle, GuildHandle, GuildMemberHandle,
+    UserHandle,
+};
 pub use error::{Result, SdkError};
 pub use events::{
-    C2cMessageReceive, C2cMsgReceive, CallbackValidationResponse, DirectMessageCreate, Event,
-    EventContext, EventEnvelope, EventHandler, EventRouter, FriendAdd, FriendDelete, GatewayClient,
-    GatewayConfig, GroupAtMessageCreate, GroupMessageCreate, InteractionCreate, MessageCreateEvent,
-    OpCode, Payload, ReadyEvent, event_display_name,
+    C2cMessageReceive, C2cMsgReceive, C2cMsgReject, CallbackValidationResponse, ChannelCreate,
+    ChannelDelete, ChannelEvent, ChannelUpdate, DirectMessageCreate, Event, EventContext,
+    EventEnvelope, EventHandler, EventRouter, FriendAdd, FriendDelete, GatewayClient,
+    GatewayConfig, GroupAddRobot, GroupAtMessageCreate, GroupDelRobot, GroupJoinRequest,
+    GroupMemberAdd, GroupMemberRemove, GroupMessageCreate, GroupMessageSetting, GuildCreate,
+    GuildDelete, GuildEvent, GuildMemberAdd, GuildMemberEvent, GuildMemberRemove,
+    GuildMemberUpdate, GuildUpdate, InteractionAuthorizeData, InteractionCreate, InteractionData,
+    InteractionMessageScene, InteractionResolved, JoinAutoApproved, JoinVerifyInfo,
+    MessageAuditPass, MessageAuditReject, MessageAudited, MessageCreateEvent, OpCode, Payload,
+    ReadyEvent, ReviewQuestion, SubscribeMessageStatus, SubscribeMessageTemplateResult,
+    event_display_name,
 };
 pub use intents::{GuildMode, Intents};
 pub use logging::{Format as LogFormat, LogTarget, SakuraLogger, WorkerGuard};
 pub use models::{
-    Ark, ArkData, Channel, Embed, FriendAuthor, Group, Guild, InputNotify, Keyboard, Media,
-    Message, MessageAttachment, MessageElement, MessageExtInfo, MessageReference, MessageRequest,
-    MessageScene, User,
+    Ark, ArkData, Channel, Embed, FriendAuthor, GatewayBotResponse, Group, Guild, InputNotify,
+    Keyboard, Media, Message, MessageAttachment, MessageElement, MessageExtInfo, MessageReference,
+    MessageRequest, MessageScene, SessionStartLimit, User,
 };
 pub use segment::{MediaSegment, MediaSource, MessageBuilder, MessageSegment, Sendable};

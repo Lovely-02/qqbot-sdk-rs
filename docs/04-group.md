@@ -21,7 +21,7 @@ async fn main() -> Result<()> {
     let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     let group = bot.group("GROUP_OPENID");
     let info = group.info().await?;
-    println!("群名称：{:?}", info.name);
+    println!("群名称：{:?}", info.group_name);
 
     group.send(segment::text("大家晚上好！")).await?;
     Ok(())
@@ -58,7 +58,7 @@ use qqbot_sdk_rs::{Bot, Result};
 async fn main() -> Result<()> {
     let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     let groups = bot.api().groups();
-    let members = groups.members_page("GROUP_OPENID", None, Some(100)).await?;
+    let members = groups.members_page("GROUP_OPENID", None).await?;
     let state = groups.bot_state("GROUP_OPENID").await?;
     println!("成员响应：{members}");
     println!("机器人状态：{state}");
@@ -88,8 +88,10 @@ use serde_json::json;
 async fn main() -> Result<()> {
     let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     let body = json!({
-        "name": "新成员欢迎策略",
-        "remark": "按业务需要填写官方字段"
+        "group_openids": ["GROUP_OPENID"],
+        "is_enable": "on",
+        "expire_at": "",
+        "remark": "新成员欢迎策略"
     });
     let created = bot.api().groups().create_join_approval_strategy(&body).await?;
     println!("策略响应：{created}");
@@ -107,4 +109,4 @@ async fn main() -> Result<()> {
 
 - [群消息发送](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_groups_group_openid_messages.post.html)
 - [群消息事件](https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_at_message_create.html)
-- [群机器人能力总览](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/group/overview.html)
+- [群机器人能力总览](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/group/)

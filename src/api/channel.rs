@@ -1,8 +1,8 @@
 use super::{optional_query, segment};
 use crate::{
     client::QQBotClient,
-    error::Result,
-    models::{Channel, Message},
+    error::{Result, SdkError},
+    models::Channel,
 };
 use reqwest::Method;
 use serde_json::Value;
@@ -53,47 +53,6 @@ impl<'a> ChannelApi<'a> {
                 &format!("/channels/{}", segment(channel_id)),
                 None,
             )
-            .await
-    }
-
-    /// 获取子频道中的一条消息。
-    pub async fn get_message(&self, channel_id: &str, message_id: &str) -> Result<Message> {
-        self.client
-            .request_json(
-                Method::GET,
-                &format!(
-                    "/channels/{}/messages/{}",
-                    segment(channel_id),
-                    segment(message_id)
-                ),
-                Option::<&Value>::None,
-            )
-            .await
-    }
-
-    /// 修改频道中的 Markdown/键盘消息。
-    pub async fn update_message(
-        &self,
-        channel_id: &str,
-        message_id: &str,
-        body: &Value,
-    ) -> Result<Message> {
-        self.client
-            .request_json(
-                Method::PATCH,
-                &format!(
-                    "/channels/{}/messages/{}",
-                    segment(channel_id),
-                    segment(message_id)
-                ),
-                Some(body),
-            )
-            .await
-    }
-
-    /// 获取语音子频道中的在线成员。
-    pub async fn voice_members(&self, channel_id: &str) -> Result<Value> {
-        self.get_value(&format!("/channels/{}/voice/members", segment(channel_id)))
             .await
     }
 
@@ -153,11 +112,13 @@ impl<'a> ChannelApi<'a> {
     }
     /// 获取帖子列表。
     pub async fn list_threads(&self, channel_id: &str) -> Result<Value> {
+        self.require_private("论坛接口")?;
         self.get_value(&format!("/channels/{}/threads", segment(channel_id)))
             .await
     }
     /// 获取单个帖子。
     pub async fn get_thread(&self, channel_id: &str, thread_id: &str) -> Result<Value> {
+        self.require_private("论坛接口")?;
         self.get_value(&format!(
             "/channels/{}/threads/{}",
             segment(channel_id),
@@ -167,6 +128,7 @@ impl<'a> ChannelApi<'a> {
     }
     /// 创建帖子。
     pub async fn create_thread(&self, channel_id: &str, body: &Value) -> Result<Value> {
+        self.require_private("论坛接口")?;
         self.client
             .request_json(
                 Method::PUT,
@@ -175,32 +137,9 @@ impl<'a> ChannelApi<'a> {
             )
             .await
     }
-    /// 兼容旧调用的帖子写入别名。
-    ///
-    /// QQ 官方没有独立的帖子更新接口；此方法与 [`Self::create_thread`] 一样使用
-    /// `PUT /channels/{channel_id}/threads`，新代码请直接调用 `create_thread`。
-    #[deprecated(note = "QQ API 没有独立的帖子更新接口，请使用 create_thread")]
-    pub async fn update_thread(&self, channel_id: &str, body: &Value) -> Result<Value> {
-        self.create_thread(channel_id, body).await
-    }
-
-    /// 设置消息为精华/置顶；官方接口请求体为空对象。
-    pub async fn pin(&self, channel_id: &str, message_id: &str) -> Result<Value> {
-        let body = serde_json::json!({});
-        self.client
-            .request_json(
-                Method::PUT,
-                &format!(
-                    "/channels/{}/pins/{}",
-                    segment(channel_id),
-                    segment(message_id)
-                ),
-                Some(&body),
-            )
-            .await
-    }
     /// 删除帖子。
     pub async fn delete_thread(&self, channel_id: &str, thread_id: &str) -> Result<()> {
+        self.require_private("论坛接口")?;
         self.client
             .request_empty::<Value>(
                 Method::DELETE,
@@ -218,13 +157,9 @@ impl<'a> ChannelApi<'a> {
         self.get_value(&format!("/channels/{}/pins", segment(channel_id)))
             .await
     }
-    /// 设置消息为精华/置顶。
-    pub async fn pin_message(
-        &self,
-        channel_id: &str,
-        message_id: &str,
-        body: &Value,
-    ) -> Result<Value> {
+    /// 设置消息为精华/置顶；官方接口请求体为空对象。
+    pub async fn pin_message(&self, channel_id: &str, message_id: &str) -> Result<Value> {
+        let body = serde_json::json!({});
         self.client
             .request_json(
                 Method::PUT,
@@ -233,7 +168,7 @@ impl<'a> ChannelApi<'a> {
                     segment(channel_id),
                     segment(message_id)
                 ),
-                Some(body),
+                Some(&body),
             )
             .await
     }
@@ -407,6 +342,7 @@ impl<'a> ChannelApi<'a> {
         message_id: &str,
         hide_tip: bool,
     ) -> Result<()> {
+        self.require_private("频道消息撤回")?;
         let value = if hide_tip { "true" } else { "false" };
         self.client
             .request_json_query::<Value, Value, _>(
@@ -494,5 +430,15 @@ impl<'a> ChannelApi<'a> {
         self.client
             .request_json(Method::GET, path, Option::<&Value>::None)
             .await
+    }
+
+    /// 检查仅私域机器人开放的频道能力。
+    fn require_private(&self, capability: &str) -> Result<()> {
+        if self.client.guild_mode() != crate::intents::GuildMode::Private {
+            return Err(SdkError::InvalidInput(format!(
+                "公域 Bot 不支持{capability}，请使用私域 Bot"
+            )));
+        }
+        Ok(())
     }
 }

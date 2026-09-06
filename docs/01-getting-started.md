@@ -109,5 +109,5 @@ async fn main() -> Result<()> {
 ## 官方资料 📚
 
 - [QQ 机器人 API v2 总览](https://bot.q.qq.com/wiki/develop/api-v2/)
-- [快速开始](https://bot.q.qq.com/wiki/develop/api-v2/getting_started/quick_start.html)
-- [网关](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/gateway.html)
+- [快速开始](https://bot.q.qq.com/wiki/develop/api-v2/dev-prepare/getting-started.html)
+- [网关](https://bot.q.qq.com/wiki/develop/api-v2/dev-prepare/event-emit/websocket.html)

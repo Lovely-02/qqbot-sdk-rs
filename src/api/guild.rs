@@ -174,7 +174,7 @@ impl<'a> GuildApi<'a> {
             .await
     }
 
-    /// 移除频道成员角色，并传入官方可选请求体（例如子频道管理员的 `channel`）。
+    /// 移除频道成员角色并传入请求体。
     pub async fn remove_member_role_with_body(
         &self,
         guild_id: &str,
@@ -247,9 +247,7 @@ impl<'a> GuildApi<'a> {
             .await
     }
 
-    /// 移除频道成员并传入官方踢出选项。
-    ///
-    /// 请求体支持 `add_blacklist` 和 `delete_history_msg_days` 字段。
+    /// 移除频道成员并传入踢出选项。
     pub async fn remove_member_with_options(
         &self,
         guild_id: &str,

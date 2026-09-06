@@ -9,8 +9,6 @@
 | `bot.user(id)`                      | 创建单聊用户会话           |
 | `UserHandle::send`                  | 发送主动单聊消息           |
 | `UserHandle::recall`                | 撤回单聊消息               |
-| `UserHandle::info`                  | 查询单聊用户信息           |
-| `api().users().get`                 | 按 OpenID 查询用户         |
 | `api().users().me`                  | 查询机器人自身资料         |
 | `api().users().guilds`              | 查询机器人加入的频道列表   |
 | `api().users().upload_file`         | 按官方请求体上传用户富媒体 |
@@ -25,9 +23,6 @@ use qqbot_sdk_rs::{segment, Bot, Result};
 async fn main() -> Result<()> {
     let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     let user = bot.user("USER_OPENID");
-
-    let profile = user.info().await?;
-    println!("用户：{:?}", profile.username);
 
     let sent = user.send(segment::text("今天也要元气满满！✨")).await?;
     if let Some(message_id) = sent.id.as_deref() {

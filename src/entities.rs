@@ -1,6 +1,6 @@
 use crate::{
     error::Result,
-    models::{Channel, Group, Guild, Message, User},
+    models::{Channel, Group, Guild, Message},
     segment::Sendable,
 };
 use std::sync::Arc;
@@ -94,10 +94,6 @@ impl UserHandle {
             .delete_c2c(&self.id, message_id)
             .await
     }
-
-    pub async fn info(&self) -> Result<User> {
-        self.client.api().users().get(&self.id).await
-    }
 }
 
 impl std::fmt::Debug for UserHandle {
@@ -105,6 +101,47 @@ impl std::fmt::Debug for UserHandle {
         formatter
             .debug_struct("UserHandle")
             .field("id", &self.id)
+            .finish()
+    }
+}
+
+/// 群成员实体，携带群和成员 OpenID。
+#[derive(Clone)]
+pub struct GroupMemberHandle {
+    client: Arc<QQBotClient>,
+    pub group_openid: String,
+    pub member_openid: String,
+}
+
+impl GroupMemberHandle {
+    pub(crate) fn new(
+        client: Arc<QQBotClient>,
+        group_openid: impl Into<String>,
+        member_openid: impl Into<String>,
+    ) -> Self {
+        Self {
+            client,
+            group_openid: group_openid.into(),
+            member_openid: member_openid.into(),
+        }
+    }
+
+    /// 获取群成员详情。
+    pub async fn info(&self) -> Result<serde_json::Value> {
+        self.client
+            .api()
+            .groups()
+            .member(&self.group_openid, &self.member_openid)
+            .await
+    }
+}
+
+impl std::fmt::Debug for GroupMemberHandle {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("GroupMemberHandle")
+            .field("group_openid", &self.group_openid)
+            .field("member_openid", &self.member_openid)
             .finish()
     }
 }
@@ -224,6 +261,47 @@ impl std::fmt::Debug for GuildHandle {
         formatter
             .debug_struct("GuildHandle")
             .field("id", &self.id)
+            .finish()
+    }
+}
+
+/// 频道成员实体，携带频道 ID 和用户 ID。
+#[derive(Clone)]
+pub struct GuildMemberHandle {
+    client: Arc<QQBotClient>,
+    pub guild_id: String,
+    pub user_id: String,
+}
+
+impl GuildMemberHandle {
+    pub(crate) fn new(
+        client: Arc<QQBotClient>,
+        guild_id: impl Into<String>,
+        user_id: impl Into<String>,
+    ) -> Self {
+        Self {
+            client,
+            guild_id: guild_id.into(),
+            user_id: user_id.into(),
+        }
+    }
+
+    /// 获取频道成员详情。
+    pub async fn info(&self) -> Result<serde_json::Value> {
+        self.client
+            .api()
+            .guilds()
+            .member(&self.guild_id, &self.user_id)
+            .await
+    }
+}
+
+impl std::fmt::Debug for GuildMemberHandle {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("GuildMemberHandle")
+            .field("guild_id", &self.guild_id)
+            .field("user_id", &self.user_id)
             .finish()
     }
 }

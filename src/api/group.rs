@@ -42,17 +42,9 @@ impl<'a> GroupApi<'a> {
             .await
     }
 
-    /// 获取群成员列表并传入官方分页参数。
-    pub async fn members_page(
-        &self,
-        group_openid: &str,
-        cursor: Option<&str>,
-        limit: Option<u16>,
-    ) -> Result<Value> {
-        let query = optional_query([
-            ("cursor", cursor.map(str::to_owned)),
-            ("limit", limit.map(|value| value.to_string())),
-        ]);
+    /// 获取群成员列表并传入官方分页游标。
+    pub async fn members_page(&self, group_openid: &str, cursor: Option<&str>) -> Result<Value> {
+        let query = optional_query([("cursor", cursor.map(str::to_owned))]);
         self.client
             .request_json_query(
                 Method::GET,

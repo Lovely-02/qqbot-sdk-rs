@@ -59,7 +59,7 @@ SDK 会自动获取并缓存 AccessToken，并在请求中加入 `Authorization:
 | `BotMode::PublicWebhook`    | 公域     | Webhook   |
 | `BotMode::PrivateWebhook`   | 私域     | Webhook   |
 
-网关场景建议使用 `GatewayConfig::for_bot(&bot)` 生成与 Bot 模式匹配的 Intents；Webhook 场景则使用对应的 Webhook 验签器处理 HTTP 回调。
+网关场景建议使用 `GatewayConfig::for_bot(&bot)` 生成与 Bot 模式匹配的频道消息 Intents；单聊、群聊、频道私信等特殊事件需要先在开放平台开通权限，再通过 `GatewayConfig.intents` 显式加入对应位。
 
 ## 三类场景怎么选？
 
@@ -103,14 +103,22 @@ async fn main() -> Result<()> {
 
 公域频道通常只能收到 `@机器人` 的消息；私域频道使用 `GuildMode::Private`。好友和群事件需要打开对应的 Intents，详见开发文档的“事件与网关”。
 
-SDK 的事件日志会同时打印官方事件名和中文名称，例如：
+SDK 的业务事件使用单行日志，方便在运行时直接查看会话、用户、动作和内容：
 
 ```text
-INFO 收到事件 event_type=MESSAGE_CREATE event_name=频道消息
-INFO 事件处理完成 event_type=GROUP_AT_MESSAGE_CREATE event_name=群@消息
+2026-09-06 14:35:21 [群消息 (GROUP_OPENID)-用户(MEMBER_OPENID)] : /help
+2026-09-06 14:35:22 [单聊消息 (USER_OPENID)] : 你好
+2026-09-06 14:35:23 [频道消息 (GUILD_ID)-子频道(CHANNEL_ID)-用户(USER_ID)] : /help
+2026-09-06 14:35:24 [频道私信 (GUILD_ID)-用户(USER_ID)] : 菜单
+2026-09-06 14:35:25 [群成员加入 (GROUP_OPENID)-用户(MEMBER_OPENID)] : 新成员加入群聊
+2026-09-06 14:35:26 [群互动 (GROUP_OPENID)-用户(MEMBER_OPENID)] : 点击了按钮(button_id)
 ```
 
-也可以在业务日志或自定义处理器中调用 `qqbot_sdk_rs::event_display_name("MESSAGE_CREATE")` 获取中文名称；平台新增事件会返回 `未知事件`，但不会影响原始事件分发。
+网关连接、鉴权和 HTTP 请求等诊断日志会保留等级和结构化字段，例如 `2026-09-06 14:35:25 [INFO] 正在连接 WebSocket 网关`。业务事件使用中文动作行；原始事件处理器仍可从 `EventEnvelope` 获取官方事件名、事件 ID 与序列号，也可以调用 `qqbot_sdk_rs::event_display_name("MESSAGE_CREATE")` 获取中文名称。
+
+调用 QQ 官方 API 失败时会输出 `ERROR`，内容直接使用官方响应体，不会重新拼接错误文案，也不会输出 AccessToken、AppSecret 或请求体。
+
+调试时设置 `RUST_LOG=info,qqbot_sdk_rs=debug`，还会输出 WebSocket 和 Webhook 收到的 QQ 官方原始 JSON。这里输出的是官方实际推送内容，不是 SDK 重新拼接的日志文本；JSON 可能包含隐私数据，生产环境请谨慎开启。
 
 ## 消息类型速记
 

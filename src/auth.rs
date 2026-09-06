@@ -1,5 +1,6 @@
 use crate::{
     error::{Result, SdkError},
+    logging::API_ERROR_LOG_TARGET,
     models::{AccessTokenResponse, ApiErrorBody},
 };
 use reqwest::Client;
@@ -9,7 +10,7 @@ use std::{
     time::{Duration, Instant},
 };
 use tokio::sync::Mutex;
-use tracing::debug;
+use tracing::{debug, error};
 
 #[derive(Debug, Clone)]
 struct CachedToken {
@@ -17,7 +18,7 @@ struct CachedToken {
     expires_at: Instant,
 }
 
-/// AppID/AppSecret 鉴权管理器，自动缓存并刷新 AccessToken。
+/// 管理 AccessToken，并自动缓存刷新。
 #[derive(Clone)]
 pub struct AccessTokenManager {
     app_id: Arc<str>,
@@ -28,7 +29,7 @@ pub struct AccessTokenManager {
 }
 
 impl AccessTokenManager {
-    /// 创建鉴权管理器。`base_url` 通常为 `https://api.bot.qq.com`。
+    /// 创建鉴权管理器。
     pub fn new(
         app_id: impl Into<String>,
         app_secret: impl Into<String>,
@@ -44,12 +45,12 @@ impl AccessTokenManager {
         }
     }
 
-    /// 返回 AppID，用于构造网关 Identify Token。
+    /// 返回 AppID。
     pub fn app_id(&self) -> &str {
         &self.app_id
     }
 
-    /// 获取仍然有效的 AccessToken，必要时请求新的 Token。
+    /// 获取有效的 AccessToken。
     pub async fn token(&self) -> Result<String> {
         {
             let cached = self.cached.lock().await;
@@ -74,7 +75,7 @@ impl AccessTokenManager {
             self.base_url.trim_end_matches('/')
         );
         debug!(%url, "刷新 QQ AccessToken");
-        let response = self
+        let response = match self
             .http
             .post(url)
             .json(&json!({
@@ -82,20 +83,35 @@ impl AccessTokenManager {
                 "clientSecret": self.app_secret.as_ref(),
             }))
             .send()
-            .await?;
+            .await
+        {
+            Ok(response) => response,
+            Err(error) => {
+                error!(target: API_ERROR_LOG_TARGET, "{error}");
+                return Err(SdkError::from(error));
+            }
+        };
         let status = response.status();
-        let bytes = response.bytes().await?;
+        let bytes = response.bytes().await.map_err(|error| {
+            error!(target: API_ERROR_LOG_TARGET, "{error}");
+            SdkError::from(error)
+        })?;
         if !status.is_success() {
             let body = serde_json::from_slice::<ApiErrorBody>(&bytes).unwrap_or_default();
-            return Err(SdkError::Api {
+            let error = SdkError::Api {
                 status: status.as_u16(),
                 code: body.err_code.or(body.code).unwrap_or(-1),
                 message: body
                     .message
                     .unwrap_or_else(|| String::from_utf8_lossy(&bytes).into_owned()),
-            });
+            };
+            error!(target: API_ERROR_LOG_TARGET, "{}", String::from_utf8_lossy(&bytes));
+            return Err(error);
         }
-        let token: AccessTokenResponse = serde_json::from_slice(&bytes)?;
+        let token: AccessTokenResponse = serde_json::from_slice(&bytes).map_err(|error| {
+            error!(target: API_ERROR_LOG_TARGET, "{}", String::from_utf8_lossy(&bytes));
+            SdkError::from(error)
+        })?;
         if token.access_token.is_empty() {
             return Err(SdkError::Auth("AccessToken 响应为空".into()));
         }
@@ -108,7 +124,7 @@ impl AccessTokenManager {
         Ok(token.access_token)
     }
 
-    /// 清除本地缓存，下次请求会重新鉴权。
+    /// 清除 Token 缓存。
     pub async fn invalidate(&self) {
         *self.cached.lock().await = None;
     }

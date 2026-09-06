@@ -5,17 +5,18 @@ use crate::{
 };
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Value, json};
 use std::sync::Arc;
+use tracing::debug;
 
-/// Webhook 请求签名校验器。
+/// Webhook 签名校验器。
 #[derive(Clone)]
 pub struct WebhookVerifier {
     key: VerifyingKey,
 }
 
 impl WebhookVerifier {
-    /// 从开发者平台的 Bot Secret 推导 Ed25519 公钥。
+    /// 从 Bot Secret 创建校验器。
     pub fn from_secret(bot_secret: &str) -> Result<Self> {
         if bot_secret.is_empty() {
             return Err(SdkError::Auth("Bot Secret 不能为空".into()));
@@ -39,7 +40,7 @@ impl WebhookVerifier {
         Ok(Self { key })
     }
 
-    /// 校验 `timestamp + body` 的 Ed25519 签名。
+    /// 校验 `timestamp + body` 签名。
     pub fn verify(&self, timestamp: &str, signature_hex: &str, body: &[u8]) -> Result<()> {
         let signature_bytes = hex::decode(signature_hex).map_err(|_| SdkError::InvalidSignature)?;
         let signature =
@@ -52,7 +53,7 @@ impl WebhookVerifier {
     }
 }
 
-/// Webhook 解析器，先验签再解析为通用 Payload。
+/// Webhook 解析器，先验签再解析 Payload。
 #[derive(Clone)]
 pub struct Webhook {
     verifier: WebhookVerifier,
@@ -71,13 +72,15 @@ impl Webhook {
         Self { verifier }
     }
 
-    /// 使用 AppSecret 为平台的 `op=13` 回调验证生成响应。
-    ///
-    /// 平台约定以 AppSecret 重复/截断为 32 字节 Ed25519 seed，并对
-    /// `event_ts + plain_token` 签名。
+    /// 生成 `op=12` 回调响应。
+    pub fn acknowledgement() -> Value {
+        json!({ "op": crate::events::OpCode::HttpCallbackAck as u8 })
+    }
+
+    /// 为平台 `op=13` 回调生成验证响应。
     pub fn validation_response(
         body: &[u8],
-        app_secret: &str,
+        bot_secret: &str,
     ) -> Result<CallbackValidationResponse> {
         let payload: Payload<Value> = serde_json::from_slice(body)?;
         if payload.op != crate::events::OpCode::CallbackVerify as u8 {
@@ -96,10 +99,10 @@ impl Webhook {
             .get("event_ts")
             .and_then(Value::as_str)
             .ok_or_else(|| SdkError::InvalidInput("验证请求缺少 event_ts".into()))?;
-        if app_secret.is_empty() {
-            return Err(SdkError::Auth("AppSecret 不能为空".into()));
+        if bot_secret.is_empty() {
+            return Err(SdkError::Auth("Bot Secret 不能为空".into()));
         }
-        let seed = secret_seed(app_secret);
+        let seed = secret_seed(bot_secret);
         let signing_key = SigningKey::from_bytes(&seed);
         let mut message = event_ts.as_bytes().to_vec();
         message.extend_from_slice(plain_token.as_bytes());
@@ -113,6 +116,10 @@ impl Webhook {
     /// 校验请求头并解析事件。
     pub fn parse(&self, timestamp: &str, signature: &str, body: &[u8]) -> Result<Payload<Value>> {
         self.verifier.verify(timestamp, signature, body)?;
+        debug!(
+            raw_content = %String::from_utf8_lossy(body),
+            "原始内容"
+        );
         Ok(serde_json::from_slice(body)?)
     }
 
@@ -132,7 +139,7 @@ impl Webhook {
         })
     }
 
-    /// 验签、解析并交给事件路由器处理，适合接入任意 HTTP 框架。
+    /// 验签、解析并分发事件。
     pub async fn dispatch(
         &self,
         timestamp: &str,
@@ -153,10 +160,11 @@ impl Webhook {
 }
 
 fn secret_seed(secret: &str) -> [u8; 32] {
-    let secret = secret.as_bytes();
-    let mut seed = [0u8; 32];
-    for (index, byte) in seed.iter_mut().enumerate() {
-        *byte = secret[index % secret.len()];
+    let mut bytes = secret.as_bytes().to_vec();
+    while bytes.len() < 32 {
+        bytes.extend_from_within(..);
     }
+    let mut seed = [0u8; 32];
+    seed.copy_from_slice(&bytes[..32]);
     seed
 }

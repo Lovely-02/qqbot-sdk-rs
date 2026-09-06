@@ -12,7 +12,7 @@ struct Window {
     count: u32,
 }
 
-/// 简单的滑动时间窗限频器，用于在本地尽早阻止超额主动消息。
+/// 本地主动消息限频器。
 #[derive(Debug, Clone)]
 pub struct RateLimiter {
     windows: Arc<Mutex<HashMap<String, Window>>>,
@@ -21,7 +21,7 @@ pub struct RateLimiter {
 }
 
 impl RateLimiter {
-    /// 创建一个固定窗口限频器。
+    /// 创建固定窗口限频器。
     pub fn new(limit: u32, period: Duration) -> Self {
         Self {
             windows: Arc::new(Mutex::new(HashMap::new())),
@@ -30,7 +30,7 @@ impl RateLimiter {
         }
     }
 
-    /// 消耗一个配额；超额时返回 [`SdkError::RateLimited`]。
+    /// 消耗配额，超额返回 [`SdkError::RateLimited`]。
     pub async fn acquire(&self, key: impl Into<String>) -> Result<()> {
         let key = key.into();
         let mut windows = self.windows.lock().await;

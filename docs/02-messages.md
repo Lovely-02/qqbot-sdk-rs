@@ -26,20 +26,20 @@ async fn main() -> Result<()> {
 
 ## 常用消息段 🌟
 
-| 消息段                               | 接口作用                | 适用范围                   |
-| ------------------------------------ | ----------------------- | -------------------------- |
-| `segment::text`                      | 普通文本                | 单聊、群聊、频道、频道私信 |
-| `segment::at` / `at_all`             | 频道内 @ 用户或全体成员 | 频道消息                   |
-| `segment::face`                      | 频道表情内嵌格式        | 频道消息                   |
-| `segment::link`                      | 频道子频道链接内嵌格式  | 频道消息                   |
-| `segment::image` / `video` / `audio` | 声明待上传的富媒体      | 单聊、群聊、频道图片       |
-| `segment::markdown`                  | Markdown 消息           | 频道、部分单聊/群聊能力    |
-| `segment::input_notify`              | 输入状态通知            | C2C 单聊                   |
-| `segment::keyboard`                  | 使用官方按钮键盘模板    | 与 Markdown 一起使用       |
-| `segment::button`                    | 构造内联按钮内容        | Markdown 键盘              |
-| `segment::reply`                     | 引用已有消息展示        | 支持引用的消息场景         |
-| `segment::reply_to` / `reply_event`  | 被动回复元数据          | 手动构造回复请求           |
-| `segment::ark` / `embed`             | Ark 或 Embed 结构化消息 | 以官方能力为准             |
+| 消息段                                        | 接口作用                | 适用范围                   |
+| --------------------------------------------- | ----------------------- | -------------------------- |
+| `segment::text`                               | 普通文本                | 单聊、群聊、频道、频道私信 |
+| `segment::at` / `at_all`                      | 频道内 @ 用户或全体成员 | 频道消息                   |
+| `segment::face`                               | 频道表情内嵌格式        | 频道消息                   |
+| `segment::link`                               | 频道子频道链接内嵌格式  | 频道消息                   |
+| `segment::image` / `video` / `audio` / `file` | 声明待上传的富媒体      | 单聊、群聊；频道仅支持图片 |
+| `segment::markdown`                           | Markdown 消息           | 单聊、群聊、频道           |
+| `segment::input_notify`                       | 输入状态通知            | C2C 单聊                   |
+| `segment::keyboard`                           | 使用官方按钮键盘模板    | 与 Markdown 一起使用       |
+| `segment::button`                             | 构造内联按钮内容        | Markdown 键盘              |
+| `segment::reply`                              | 引用已有消息展示        | 支持引用的消息场景         |
+| `segment::reply_to` / `reply_event`           | 被动回复元数据          | 手动构造回复请求           |
+| `segment::ark` / `embed`                      | Ark 或 Embed 结构化消息 | 仅频道与频道私信发送       |
 
 ## 频道内嵌格式要小心 🎪
 
@@ -165,9 +165,13 @@ async fn main() -> Result<()> {
 
 `file_type` 按官方定义为 `1` 图片、`2` 视频、`3` 语音、`4` 文件。频道本地图片使用 `multipart/form-data` 的 `file_image`；单聊和群聊本地文件使用官方分片上传流程。
 
+`segment::file(path)` 和 `segment::file_bytes(data)` 对应官方 `file_type=4`，只适用于单聊和群聊。
+
 ## 输入状态通知 ⌨️
 
-`segment::input_notify(input_type, input_second)` 会自动设置 `msg_type = 6`，用于 C2C 输入状态。它不应与普通文本或其他消息类型混在同一请求中。
+`segment::input_notify(input_type, input_second)` 会自动设置 `msg_type = 6`，用于 C2C 单聊输入状态。当前官方接口要求 `input_type=1`，持续时间为 1 到 60 秒；它不应与普通文本或其他消息类型混在同一请求中。
+
+单聊和群聊 Markdown 还支持 `force_verify_image_resource`：设为 `true` 时，图片资源转存失败会让整条消息失败，默认值为 `false`。需要直接控制该字段时，可在 `MessageRequest` 中设置它，SDK 会把字段放入官方的 `markdown` 对象。
 
 ## 直接构造请求体 🧰
 
@@ -175,13 +179,15 @@ async fn main() -> Result<()> {
 
 ```rust,no_run
 use qqbot_sdk_rs::{Bot, MessageRequest, Result};
+use serde_json::json;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     let request = MessageRequest {
-        content: Some("可控字段消息".into()),
-        msg_type: Some(0),
+        markdown: Some(json!({ "content": "图片转存失败时中止发送" })),
+        msg_type: Some(2),
+        force_verify_image_resource: Some(true),
         ..Default::default()
     };
     bot.group("GROUP_OPENID").send(request).await?;

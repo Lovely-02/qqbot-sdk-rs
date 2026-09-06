@@ -133,9 +133,7 @@ impl<'a> MessageApi<'a> {
         .await
     }
 
-    /// 按官方分片流程上传单聊或群聊富媒体文件并返回 `file_info`。
-    ///
-    /// `file_type` 使用 QQ 定义：1 图片、2 视频、3 语音、4 文件。
+    /// 按官方分片流程上传富媒体并返回 `file_info`。
     pub async fn upload_media(
         &self,
         target: MediaTarget<'_>,
@@ -349,6 +347,11 @@ impl<'a> MessageApi<'a> {
 
     /// 撤回子频道中的一条消息。
     pub async fn delete_channel(&self, channel_id: &str, message_id: &str) -> Result<()> {
+        if self.client.guild_mode() != crate::intents::GuildMode::Private {
+            return Err(SdkError::InvalidInput(
+                "公域 Bot 不支持频道消息撤回，请使用私域 Bot".into(),
+            ));
+        }
         let path = format!(
             "/channels/{}/messages/{}",
             segment(channel_id),
@@ -385,6 +388,11 @@ impl<'a> MessageApi<'a> {
 
     /// 撤回频道私信中的一条消息。
     pub async fn delete_dm(&self, guild_id: &str, message_id: &str, hide_tip: bool) -> Result<()> {
+        if self.client.guild_mode() != crate::intents::GuildMode::Private {
+            return Err(SdkError::InvalidInput(
+                "公域 Bot 不支持频道私信撤回，请使用私域 Bot".into(),
+            ));
+        }
         let value = if hide_tip { "true" } else { "false" };
         self.client
             .request_json_query::<serde_json::Value, serde_json::Value, _>(
@@ -537,6 +545,7 @@ impl<'a> MessageApi<'a> {
         {
             request.msg_type = Some(infer_msg_type(&request));
         }
+        apply_force_verify_image_resource(&mut request)?;
         self.client
             .request_json(Method::POST, &target.path(), Some(&request))
             .await
@@ -553,6 +562,28 @@ fn infer_msg_type(request: &MessageRequest) -> u8 {
     } else {
         0
     }
+}
+
+/// 将便捷字段写入 `markdown` 对象。
+fn apply_force_verify_image_resource(request: &mut MessageRequest) -> Result<()> {
+    let Some(force_verify) = request.force_verify_image_resource else {
+        return Ok(());
+    };
+    let markdown = request.markdown.as_mut().ok_or_else(|| {
+        SdkError::InvalidInput(
+            "force_verify_image_resource 只能与单聊或群聊 Markdown 消息一起使用".into(),
+        )
+    })?;
+    let object = markdown.as_object_mut().ok_or_else(|| {
+        SdkError::InvalidInput(
+            "markdown 必须是官方对象，才能设置 force_verify_image_resource".into(),
+        )
+    })?;
+    object.insert(
+        "force_verify_image_resource".into(),
+        Value::Bool(force_verify),
+    );
+    Ok(())
 }
 
 #[derive(Debug, Deserialize)]
@@ -702,6 +733,11 @@ fn normalize_request(
                     "发送 Markdown 时 content 必须为空".into(),
                 ));
             }
+            if request.force_verify_image_resource.is_some() && request.markdown.is_none() {
+                return Err(SdkError::InvalidInput(
+                    "force_verify_image_resource 只能与 Markdown 消息一起使用".into(),
+                ));
+            }
             let primary = [
                 request.content.as_ref().map(|_| 0),
                 request.markdown.as_ref().map(|_| 2),
@@ -785,6 +821,11 @@ fn normalize_request(
                     "发送 Markdown 时 content 必须为空".into(),
                 ));
             }
+            if request.force_verify_image_resource.is_some() && request.markdown.is_none() {
+                return Err(SdkError::InvalidInput(
+                    "force_verify_image_resource 只能与 Markdown 消息一起使用".into(),
+                ));
+            }
             let primary = [
                 request.content.as_ref().map(|_| 0),
                 request.markdown.as_ref().map(|_| 2),
@@ -820,6 +861,11 @@ fn normalize_request(
             }
         }
         MessageTarget::Channel(_) | MessageTarget::Dm(_) => {
+            if request.force_verify_image_resource.is_some() {
+                return Err(SdkError::InvalidInput(
+                    "force_verify_image_resource 仅适用于单聊和群聊 Markdown 消息".into(),
+                ));
+            }
             if request.keyboard.is_some()
                 || request.media.is_some()
                 || request.input_notify.is_some()
@@ -840,8 +886,7 @@ fn normalize_request(
                     "频道消息必须包含 content、embed、ark、image 或 markdown".into(),
                 ));
             }
-            // msg_type 仅用于单聊和群聊请求；频道与频道私信根据 content、embed、ark 等字段
-            // 是否存在来确定请求载荷。
+            // 频道请求不使用 msg_type。
             request.msg_type = None;
             request.msg_seq = None;
         }

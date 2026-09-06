@@ -4,12 +4,11 @@
 
 ## Bot 信息与频道列表 🤖
 
-| 接口                                    | 作用                       |
-| --------------------------------------- | -------------------------- |
-| `api().bot().me()`                      | 获取当前机器人资料         |
-| `api().bot().guilds(after, limit)`      | 分页查询机器人可访问的频道 |
-| `api().bot().list_guilds(after, limit)` | `guilds` 的语义别名        |
-| `api().bot().create_dm(body)`           | 创建频道私信会话           |
+| 接口                                       | 作用                       |
+| ------------------------------------------ | -------------------------- |
+| `api().bot().me()`                         | 获取当前机器人资料         |
+| `api().bot().guilds(before, after, limit)` | 分页查询机器人可访问的频道 |
+| `api().bot().create_dm(body)`              | 创建频道私信会话           |
 
 ```rust,no_run
 use qqbot_sdk_rs::{Bot, Result};
@@ -18,27 +17,27 @@ use qqbot_sdk_rs::{Bot, Result};
 async fn main() -> Result<()> {
     let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     let me = bot.api().bot().me().await?;
-    let guilds = bot.api().bot().guilds(None, Some(50)).await?;
+    let guilds = bot.api().bot().guilds(None, None, Some(50)).await?;
     println!("机器人：{:?}，可访问频道：{}", me.username, guilds.len());
     Ok(())
 }
 ```
 
-`after` 是上一页末尾的频道 ID，`limit` 是单页数量；实际范围以官方分页说明为准。
+`before`、`after` 是官方分页游标，`limit` 是单页数量；同时传入 `before` 与 `after` 时，以官方行为为准。
 
 ## 指令面板 🎛️
 
 `PanelApi` 用于管理机器人的指令面板：
 
-| 接口                                     | 作用                   |
-| ---------------------------------------- | ---------------------- |
-| `panels().list()`                        | 查询面板列表           |
-| `panels().list_with_options(...)`        | 按场景、游标和数量查询 |
-| `panels().create(body)`                  | 创建面板               |
-| `panels().get(panel_id)`                 | 查询面板详情           |
-| `panels().update(panel_id, body)`        | 更新面板               |
-| `panels().update_target(panel_id, body)` | 更新面板投放目标       |
-| `panels().delete(panel_id)`              | 删除面板               |
+| 接口                                               | 作用                   |
+| -------------------------------------------------- | ---------------------- |
+| `panels().list(scope)`                             | 查询指定场景的面板列表 |
+| `panels().list_with_options(scope, cursor, limit)` | 按场景、游标和数量查询 |
+| `panels().create(body)`                            | 创建面板               |
+| `panels().get(panel_id)`                           | 查询面板详情           |
+| `panels().update(panel_id, body)`                  | 更新面板               |
+| `panels().update_target(panel_id, body)`           | 更新面板投放目标       |
+| `panels().delete(panel_id)`                        | 删除面板               |
 
 ```rust,no_run
 use qqbot_sdk_rs::{Bot, Result};
@@ -46,8 +45,11 @@ use serde_json::json;
 
 async fn create_panel(bot: &Bot) -> Result<()> {
     let body = json!({
-        "name": "帮助面板",
-        "description": "请求字段请按官方面板文档填写"
+        "scope": "c2c",
+        "target_type": "all",
+        "panel": {
+            "items": []
+        }
     });
     let panel = bot.api().panels().create(&body).await?;
     println!("创建结果：{panel}");
@@ -67,9 +69,15 @@ use serde_json::json;
 
 async fn update_menu(bot: &Bot) -> Result<()> {
     let menu = json!({
-        "menus": [
-            { "name": "帮助", "command": "/help" }
-        ]
+        "menu": {
+            "items": [
+                {
+                    "type": "send_message",
+                    "name": "帮助",
+                    "send_message": "/help"
+                }
+            ]
+        }
     });
     bot.api().menu().put(&menu).await?;
     Ok(())
@@ -109,4 +117,4 @@ async fn tools(bot: &Bot) -> Result<()> {
 ## 官方资料 📚
 
 - [QQ 机器人 API v2 总览](https://bot.q.qq.com/wiki/develop/api-v2/)
-- [互动事件](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/channel/interaction/model.html)
+- [互动事件](https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/interaction_create.html)

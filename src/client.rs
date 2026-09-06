@@ -4,13 +4,17 @@ use crate::{
         UserApi, UtilityApi,
     },
     auth::AccessTokenManager,
-    entities::{ChannelHandle, DirectHandle, GroupHandle, GuildHandle, UserHandle},
+    entities::{
+        ChannelHandle, DirectHandle, GroupHandle, GroupMemberHandle, GuildHandle,
+        GuildMemberHandle, UserHandle,
+    },
     error::{Result, SdkError},
     intents::{GuildMode, Intents},
-    models::ApiErrorBody,
+    logging::API_ERROR_LOG_TARGET,
+    models::{ApiErrorBody, GatewayBotResponse},
     ratelimit::RateLimiter,
 };
-use reqwest::{Client as HttpClient, Method};
+use reqwest::{Client as HttpClient, Method, RequestBuilder, Response};
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
 use std::{
@@ -20,7 +24,7 @@ use std::{
     },
     time::Duration,
 };
-use tracing::{Instrument, debug, info_span};
+use tracing::{Instrument, debug, error, info_span};
 
 static NEXT_SPAN_ID: AtomicU64 = AtomicU64::new(1);
 
@@ -28,18 +32,16 @@ pub(crate) fn next_span_id() -> u64 {
     NEXT_SPAN_ID.fetch_add(1, Ordering::Relaxed)
 }
 
-/// Bot 的事件接入方式。
+/// 事件接入方式。
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum EventTransport {
-    /// 使用 WebSocket 网关接收事件。
+    /// WebSocket 接入。
     WebSocket,
-    /// 使用 Webhook 接收事件。
+    /// Webhook 接入。
     Webhook,
 }
 
-/// Bot 的公域/私域与事件接入组合。
-///
-/// 创建 Bot 时必须明确选择一种模式，避免网关订阅范围和事件接入方式配置错位。
+/// Bot 的域类型与事件接入方式。
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum BotMode {
     /// 公域 Bot + WebSocket。
@@ -53,7 +55,7 @@ pub enum BotMode {
 }
 
 impl BotMode {
-    /// 返回当前 Bot 对应的公域/私域模式。
+    /// 返回公域或私域模式。
     pub const fn guild_mode(self) -> GuildMode {
         match self {
             Self::PublicWebSocket | Self::PublicWebhook => GuildMode::Public,
@@ -61,7 +63,7 @@ impl BotMode {
         }
     }
 
-    /// 返回当前 Bot 的事件接入方式。
+    /// 返回事件接入方式。
     pub const fn event_transport(self) -> EventTransport {
         match self {
             Self::PublicWebSocket | Self::PrivateWebSocket => EventTransport::WebSocket,
@@ -69,21 +71,21 @@ impl BotMode {
         }
     }
 
-    /// 判断当前 Bot 是否使用 WebSocket。
+    /// 是否使用 WebSocket。
     pub const fn is_websocket(self) -> bool {
         matches!(self.event_transport(), EventTransport::WebSocket)
     }
 
-    /// 判断当前 Bot 是否使用 Webhook。
+    /// 是否使用 Webhook。
     pub const fn is_webhook(self) -> bool {
         matches!(self.event_transport(), EventTransport::Webhook)
     }
 }
 
-/// HTTP 与网关连接的基础配置。
+/// 客户端配置。
 #[derive(Debug, Clone)]
 pub struct ClientConfig {
-    /// Bot 的公域/私域与事件接入组合。
+    /// Bot 模式。
     pub mode: BotMode,
     /// QQ API 根地址。
     pub api_base_url: String,
@@ -91,7 +93,7 @@ pub struct ClientConfig {
     pub gateway_url: Option<String>,
     /// 单次 HTTP 请求超时。
     pub request_timeout: Duration,
-    /// Bot 维度的本地主动消息限频。
+    /// 主动消息 QPS 限制。
     pub bot_qps: u32,
 }
 
@@ -107,7 +109,7 @@ impl Default for ClientConfig {
     }
 }
 
-/// QQ Bot API 客户端。
+/// QQ Bot 客户端。
 #[derive(Clone)]
 pub struct QQBotClient {
     pub(crate) http: HttpClient,
@@ -116,13 +118,13 @@ pub struct QQBotClient {
     pub(crate) limiter: RateLimiter,
 }
 
-/// `QQBotClient` 的简写别名。
+/// 客户端别名。
 pub type Client = QQBotClient;
-/// 供会话实体和事件辅助方法使用的 Bot 风格公开别名。
+/// Bot 风格别名。
 pub type Bot = QQBotClient;
 
 impl QQBotClient {
-    /// 使用 AppID、AppSecret 和 Bot 模式创建客户端。
+    /// 创建客户端。
     pub fn new(
         app_id: impl Into<String>,
         app_secret: impl Into<String>,
@@ -138,7 +140,7 @@ impl QQBotClient {
         )
     }
 
-    /// 使用自定义配置创建客户端。
+    /// 按配置创建客户端。
     pub fn with_config(
         app_id: impl Into<String>,
         app_secret: impl Into<String>,
@@ -163,62 +165,80 @@ impl QQBotClient {
         })
     }
 
-    /// 返回 API 模块入口。
+    /// 返回 API 入口。
     pub fn api(&self) -> Api<'_> {
         Api { client: self }
     }
 
-    /// 返回底层鉴权管理器。
+    /// 返回鉴权管理器。
     pub fn auth(&self) -> &AccessTokenManager {
         &self.auth
     }
 
-    /// 返回创建客户端时选择的 Bot 模式。
+    /// 返回 Bot 模式。
     pub fn mode(&self) -> BotMode {
         self.config.mode
     }
 
-    /// 返回当前 Bot 的公域/私域模式。
+    /// 返回公域或私域模式。
     pub fn guild_mode(&self) -> GuildMode {
         self.config.mode.guild_mode()
     }
 
-    /// 返回当前 Bot 的事件接入方式。
+    /// 返回事件接入方式。
     pub fn event_transport(&self) -> EventTransport {
         self.config.mode.event_transport()
     }
 
-    /// 根据 Bot 模式生成常用的官方网关订阅配置。
+    /// 生成默认网关订阅；特殊 Intents 需按权限手动加入。
     pub fn default_intents(&self) -> Intents {
-        Intents::for_mode(self.guild_mode(), true, true)
+        Intents::for_mode(self.guild_mode(), false, false)
     }
 
-    /// 返回群会话实体，对应 `bot.group(id)`。
+    /// 创建群会话实体。
     pub fn group(&self, id: impl Into<String>) -> GroupHandle {
         GroupHandle::new(Arc::new(self.clone()), id)
     }
 
-    /// 返回单聊用户会话实体，对应 `bot.user(id)`。
+    /// 创建群成员实体。
+    pub fn group_member(
+        &self,
+        group_openid: impl Into<String>,
+        member_openid: impl Into<String>,
+    ) -> GroupMemberHandle {
+        GroupMemberHandle::new(Arc::new(self.clone()), group_openid, member_openid)
+    }
+
+    /// 创建单聊会话实体。
     pub fn user(&self, id: impl Into<String>) -> UserHandle {
         UserHandle::new(Arc::new(self.clone()), id)
     }
 
-    /// 返回频道子频道会话实体，对应 `bot.channel(id)`。
+    /// 创建子频道会话实体。
     pub fn channel(&self, id: impl Into<String>) -> ChannelHandle {
         ChannelHandle::new(Arc::new(self.clone()), id)
     }
 
-    /// 返回频道私信会话实体，对应 `bot.direct(guild_id)`。
+    /// 创建频道私信实体。
     pub fn direct(&self, guild_id: impl Into<String>) -> DirectHandle {
         DirectHandle::new(Arc::new(self.clone()), guild_id)
     }
 
-    /// 返回频道会话实体，对应 `bot.guild(id)`。
+    /// 创建频道会话实体。
     pub fn guild(&self, id: impl Into<String>) -> GuildHandle {
         GuildHandle::new(Arc::new(self.clone()), id)
     }
 
-    /// 发送单聊消息的便捷方法。
+    /// 创建频道成员实体。
+    pub fn guild_member(
+        &self,
+        guild_id: impl Into<String>,
+        user_id: impl Into<String>,
+    ) -> GuildMemberHandle {
+        GuildMemberHandle::new(Arc::new(self.clone()), guild_id, user_id)
+    }
+
+    /// 发送单聊消息。
     pub async fn send_c2c_message(
         &self,
         user_openid: &str,
@@ -227,7 +247,7 @@ impl QQBotClient {
         self.api().messages().send_c2c(user_openid, message).await
     }
 
-    /// 发送群消息的便捷方法。
+    /// 发送群消息。
     pub async fn send_group_message(
         &self,
         group_openid: &str,
@@ -239,7 +259,7 @@ impl QQBotClient {
             .await
     }
 
-    /// 发送子频道消息的便捷方法。
+    /// 发送子频道消息。
     pub async fn send_channel_message(
         &self,
         channel_id: &str,
@@ -264,14 +284,15 @@ impl QQBotClient {
             .ok_or_else(|| SdkError::WebSocket("/gateway 响应缺少 url".into()))
     }
 
-    /// 获取兼容旧版网关接口的地址（`/gateway/bot`）。
+    /// 获取 `/gateway/bot` 的 WSS 地址。
     pub async fn gateway_url_bot(&self) -> Result<String> {
-        let response: GatewayResponse = self
-            .request_json(Method::GET, "/gateway/bot", Option::<&Value>::None)
-            .await?;
-        response
-            .url
-            .ok_or_else(|| SdkError::WebSocket("/gateway/bot 响应缺少 url".into()))
+        Ok(self.gateway_bot().await?.url)
+    }
+
+    /// 获取 `/gateway/bot` 的完整响应。
+    pub async fn gateway_bot(&self) -> Result<GatewayBotResponse> {
+        self.request_json(Method::GET, "/gateway/bot", Option::<&Value>::None)
+            .await
     }
 
     pub(crate) fn url(&self, path: &str) -> String {
@@ -304,12 +325,12 @@ impl QQBotClient {
         async move {
             let mut request = self
                 .http
-                .request(method, self.url(path))
+                .request(method.clone(), self.url(path))
                 .header("Authorization", format!("QQBot {token}"));
             if let Some(body) = body {
                 request = request.json(body);
             }
-            let response = request.send().await?;
+            let response = self.send_request(request).await?;
             self.decode_response(response).await
         }
         .instrument(span)
@@ -336,13 +357,13 @@ impl QQBotClient {
         async move {
             let mut request = self
                 .http
-                .request(method, self.url(path))
+                .request(method.clone(), self.url(path))
                 .header("Authorization", format!("QQBot {token}"))
                 .query(query);
             if let Some(body) = body {
                 request = request.json(body);
             }
-            let response = request.send().await?;
+            let response = self.send_request(request).await?;
             self.decode_response(response).await
         }
         .instrument(span)
@@ -364,13 +385,12 @@ impl QQBotClient {
         let span_id = next_span_id();
         let span = info_span!("qq_http", method = %method, path, trace_id, span_id);
         async move {
-            let response = self
+            let request = self
                 .http
-                .request(method, self.url(path))
+                .request(method.clone(), self.url(path))
                 .header("Authorization", format!("QQBot {token}"))
-                .multipart(form)
-                .send()
-                .await?;
+                .multipart(form);
+            let response = self.send_request(request).await?;
             self.decode_response(response).await
         }
         .instrument(span)
@@ -387,28 +407,48 @@ impl QQBotClient {
         Ok(())
     }
 
+    /// 发送 QQ API 请求并记录网络错误。
+    async fn send_request(&self, request: RequestBuilder) -> Result<Response> {
+        request.send().await.map_err(|error| {
+            error!(target: API_ERROR_LOG_TARGET, "{error}");
+            SdkError::from(error)
+        })
+    }
+
+    /// 解析 QQ API 响应并记录错误。
     async fn decode_response<T: DeserializeOwned>(&self, response: reqwest::Response) -> Result<T> {
         let status = response.status();
-        let bytes = response.bytes().await?;
+        let bytes = response.bytes().await.map_err(|error| {
+            error!(target: API_ERROR_LOG_TARGET, "{error}");
+            SdkError::from(error)
+        })?;
         debug!(status = status.as_u16(), size = bytes.len(), "QQ API 响应");
         if !status.is_success() {
             let body = serde_json::from_slice::<ApiErrorBody>(&bytes).unwrap_or_default();
-            return Err(SdkError::Api {
+            let error = SdkError::Api {
                 status: status.as_u16(),
                 code: body.err_code.or(body.code).unwrap_or(-1),
                 message: body
                     .message
                     .unwrap_or_else(|| String::from_utf8_lossy(&bytes).into_owned()),
-            });
+            };
+            error!(target: API_ERROR_LOG_TARGET, "{}", String::from_utf8_lossy(&bytes));
+            return Err(error);
         }
         if bytes.is_empty() {
-            return serde_json::from_value(Value::Null).map_err(Into::into);
+            return serde_json::from_value(Value::Null).map_err(|error| {
+                error!(target: API_ERROR_LOG_TARGET, "{error}");
+                SdkError::from(error)
+            });
         }
-        Ok(serde_json::from_slice(&bytes)?)
+        serde_json::from_slice(&bytes).map_err(|error| {
+            error!(target: API_ERROR_LOG_TARGET, "{}", String::from_utf8_lossy(&bytes));
+            SdkError::from(error)
+        })
     }
 }
 
-/// 各 API 模块的统一入口。
+/// API 入口。
 pub struct Api<'a> {
     pub(crate) client: &'a QQBotClient,
 }
