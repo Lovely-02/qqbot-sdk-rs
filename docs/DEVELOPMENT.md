@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
 | `bot.api().guilds()`   | 频道和频道成员 API   |
 | `bot.api().channels()` | 子频道内容与管理 API |
 
-创建 Bot 时必须明确选择公域/私域和事件接入方式，详见 [01 起步与鉴权](01-getting-started.md)：
+创建 Bot 时，WebSocket 需要选择公域或私域；Webhook 订阅范围由开放平台配置，详见 [01 起步与鉴权](01-getting-started.md)：
 
 ```rust,no_run
 use qqbot_sdk_rs::{Bot, BotMode, Result};

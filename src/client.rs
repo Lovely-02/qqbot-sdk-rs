@@ -48,18 +48,17 @@ pub enum BotMode {
     PublicWebSocket,
     /// 私域 Bot + WebSocket。
     PrivateWebSocket,
-    /// 公域 Bot + Webhook。
-    PublicWebhook,
-    /// 私域 Bot + Webhook。
-    PrivateWebhook,
+    /// Webhook 接入，订阅范围由开放平台配置。
+    Webhook,
 }
 
 impl BotMode {
-    /// 返回公域或私域模式。
-    pub const fn guild_mode(self) -> GuildMode {
+    /// 返回网关公私域模式；Webhook 返回 `None`。
+    pub const fn guild_mode(self) -> Option<GuildMode> {
         match self {
-            Self::PublicWebSocket | Self::PublicWebhook => GuildMode::Public,
-            Self::PrivateWebSocket | Self::PrivateWebhook => GuildMode::Private,
+            Self::PublicWebSocket => Some(GuildMode::Public),
+            Self::PrivateWebSocket => Some(GuildMode::Private),
+            Self::Webhook => None,
         }
     }
 
@@ -67,7 +66,7 @@ impl BotMode {
     pub const fn event_transport(self) -> EventTransport {
         match self {
             Self::PublicWebSocket | Self::PrivateWebSocket => EventTransport::WebSocket,
-            Self::PublicWebhook | Self::PrivateWebhook => EventTransport::Webhook,
+            Self::Webhook => EventTransport::Webhook,
         }
     }
 
@@ -180,8 +179,8 @@ impl QQBotClient {
         self.config.mode
     }
 
-    /// 返回公域或私域模式。
-    pub fn guild_mode(&self) -> GuildMode {
+    /// 返回网关公私域模式；Webhook 返回 `None`。
+    pub fn guild_mode(&self) -> Option<GuildMode> {
         self.config.mode.guild_mode()
     }
 
@@ -192,7 +191,8 @@ impl QQBotClient {
 
     /// 生成默认网关订阅；特殊 Intents 需按权限手动加入。
     pub fn default_intents(&self) -> Intents {
-        Intents::for_mode(self.guild_mode(), false, false)
+        self.guild_mode()
+            .map_or_else(Intents::empty, |mode| Intents::for_mode(mode, false, false))
     }
 
     /// 创建群会话实体。

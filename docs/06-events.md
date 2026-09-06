@@ -30,7 +30,7 @@ async fn main() -> Result<()> {
 }
 ```
 
-使用 Webhook 时，创建 Bot 应选择 `BotMode::PublicWebhook` 或 `BotMode::PrivateWebhook`；`Webhook::dispatch` 会拒绝把 Webhook 事件交给 WebSocket 模式的 Bot。
+使用 Webhook 时，创建 Bot 应选择 `BotMode::Webhook`。Webhook 的订阅范围在 QQ 开放平台配置，SDK 不区分公域或私域；`Webhook::dispatch` 只会拒绝把 Webhook 事件交给 WebSocket 模式的 Bot。
 
 这里的两个调用作用不同：`event.reply(...)` 是针对当前事件的被动回复；`event.group()?.send(...)` 是拿到群会话后发送一条主动消息。
 
@@ -78,7 +78,7 @@ async fn main() -> Result<()> {
 | `Intents::FORUMS_EVENT`            | 论坛事件（仅私域）        |
 | `Intents::AUDIO_ACTION`            | 音频动作事件              |
 
-`Intents::for_mode` 自动加入 `GUILDS` 与公域/私域频道消息位；单聊、群聊、频道私信和其他特殊位需要在开放平台开通权限后显式加入，避免鉴权时触发 `4014`。
+`Intents::for_mode` 只用于 WebSocket，自动加入 `GUILDS` 与公域/私域频道消息位；单聊、群聊、频道私信和其他特殊位需要在开放平台开通权限后显式加入，避免鉴权时触发 `4014`。Webhook 不使用 SDK 内的 Intents，订阅范围直接由开放平台配置。
 
 ## 原始事件与未知事件 🧪
 

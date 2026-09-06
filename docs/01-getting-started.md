@@ -19,14 +19,13 @@ SDK 的异步 API 以 Tokio 为基础，`serde_json` 用于官方接口中可扩
 
 `Bot::new(app_id, app_secret, mode)` 创建一个 QQ Bot API 客户端。`Bot` 是 `QQBotClient` 的友好别名，适合搭配 `bot.user(...)`、`bot.group(...)` 这类会话入口。
 
-创建时需要明确选择 Bot 的运行模式：
+创建时选择 Bot 的运行模式。WebSocket 区分公域和私域，Webhook 的订阅范围由开放平台配置：
 
-| 模式                        | 公域/私域 | 事件接入  |
-| --------------------------- | --------- | --------- |
-| `BotMode::PublicWebSocket`  | 公域      | WebSocket |
-| `BotMode::PrivateWebSocket` | 私域      | WebSocket |
-| `BotMode::PublicWebhook`    | 公域      | Webhook   |
-| `BotMode::PrivateWebhook`   | 私域      | Webhook   |
+| 模式                        | 频道范围       | 事件接入  |
+| --------------------------- | -------------- | --------- |
+| `BotMode::PublicWebSocket`  | 公域           | WebSocket |
+| `BotMode::PrivateWebSocket` | 私域           | WebSocket |
+| `BotMode::Webhook`          | 开放平台配置   | Webhook   |
 
 ```rust,no_run
 use qqbot_sdk_rs::{Bot, Result};

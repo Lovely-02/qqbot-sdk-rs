@@ -347,7 +347,7 @@ impl<'a> MessageApi<'a> {
 
     /// 撤回子频道中的一条消息。
     pub async fn delete_channel(&self, channel_id: &str, message_id: &str) -> Result<()> {
-        if self.client.guild_mode() != crate::intents::GuildMode::Private {
+        if self.client.guild_mode() == Some(crate::intents::GuildMode::Public) {
             return Err(SdkError::InvalidInput(
                 "公域 Bot 不支持频道消息撤回，请使用私域 Bot".into(),
             ));
@@ -388,7 +388,7 @@ impl<'a> MessageApi<'a> {
 
     /// 撤回频道私信中的一条消息。
     pub async fn delete_dm(&self, guild_id: &str, message_id: &str, hide_tip: bool) -> Result<()> {
-        if self.client.guild_mode() != crate::intents::GuildMode::Private {
+        if self.client.guild_mode() == Some(crate::intents::GuildMode::Public) {
             return Err(SdkError::InvalidInput(
                 "公域 Bot 不支持频道私信撤回，请使用私域 Bot".into(),
             ));

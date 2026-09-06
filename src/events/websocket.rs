@@ -106,7 +106,7 @@ impl GatewayClient {
             ));
         }
         match client.guild_mode() {
-            crate::intents::GuildMode::Public
+            Some(crate::intents::GuildMode::Public)
                 if config.intents.contains(Intents::GUILD_MESSAGES)
                     || config.intents.contains(Intents::FORUMS_EVENT) =>
             {
@@ -114,7 +114,7 @@ impl GatewayClient {
                     "公域 Bot 不能订阅 GUILD_MESSAGES 或 FORUMS_EVENT".into(),
                 ));
             }
-            crate::intents::GuildMode::Private
+            Some(crate::intents::GuildMode::Private)
                 if config.intents.contains(Intents::PUBLIC_GUILD_MESSAGES) =>
             {
                 return Err(SdkError::InvalidInput(

@@ -434,7 +434,7 @@ impl<'a> ChannelApi<'a> {
 
     /// 检查仅私域机器人开放的频道能力。
     fn require_private(&self, capability: &str) -> Result<()> {
-        if self.client.guild_mode() != crate::intents::GuildMode::Private {
+        if self.client.guild_mode() == Some(crate::intents::GuildMode::Public) {
             return Err(SdkError::InvalidInput(format!(
                 "公域 Bot 不支持{capability}，请使用私域 Bot"
             )));

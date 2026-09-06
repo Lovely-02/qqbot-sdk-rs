@@ -50,14 +50,13 @@ async fn main() -> Result<()> {
 
 SDK 会自动获取并缓存 AccessToken，并在请求中加入 `Authorization: QQBot <token>`。`APP_ID`、`APP_SECRET`、用户 OpenID、群 OpenID 和频道 ID 都是占位符，请替换成你自己的值。
 
-创建 Bot 时必须明确选择公域/私域和事件接入方式：
+创建 Bot 时，WebSocket 需要选择公域或私域；Webhook 使用独立的 `BotMode::Webhook`：
 
-| 模式                        | 频道范围 | 事件接入  |
-| --------------------------- | -------- | --------- |
-| `BotMode::PublicWebSocket`  | 公域     | WebSocket |
-| `BotMode::PrivateWebSocket` | 私域     | WebSocket |
-| `BotMode::PublicWebhook`    | 公域     | Webhook   |
-| `BotMode::PrivateWebhook`   | 私域     | Webhook   |
+| 模式                        | 频道范围       | 事件接入  |
+| --------------------------- | -------------- | --------- |
+| `BotMode::PublicWebSocket`  | 公域           | WebSocket |
+| `BotMode::PrivateWebSocket` | 私域           | WebSocket |
+| `BotMode::Webhook`          | 开放平台配置   | Webhook   |
 
 网关场景建议使用 `GatewayConfig::for_bot(&bot)` 生成与 Bot 模式匹配的频道消息 Intents；单聊、群聊、频道私信等特殊事件需要先在开放平台开通权限，再通过 `GatewayConfig.intents` 显式加入对应位。
 
@@ -101,7 +100,7 @@ async fn main() -> Result<()> {
 }
 ```
 
-公域频道通常只能收到 `@机器人` 的消息；私域频道使用 `GuildMode::Private`。好友和群事件需要打开对应的 Intents，详见开发文档的“事件与网关”。
+公域和私域只用于 WebSocket 网关订阅。Webhook 的订阅范围直接在 QQ 开放平台配置，SDK 不区分公域或私域；好友和群事件也需要按平台配置开通，详见开发文档的“事件与网关”。
 
 SDK 的业务事件使用单行日志，方便在运行时直接查看会话、用户、动作和内容：
 
