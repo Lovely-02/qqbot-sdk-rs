@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.1.1...qqbot-sdk-rs-v0.1.2) (2026-09-06)
+
+
+### 🐛 Bug 修复
+
+* 修复消息订阅 ([c2433b2](https://github.com/Lovely-02/qqbot-sdk-rs/commit/c2433b278d2bd4aac244aebacd4feeeb8a9a72d8))
+
 ## [0.1.1](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.1.0...qqbot-sdk-rs-v0.1.1) (2026-09-06)
 
 
