@@ -8,12 +8,12 @@
 
 ```toml
 [dependencies]
-qqbot-sdk-rs = { git = "https://github.com/Lovely-02/qqbot-sdk-rs.git", branch = "main" }
+qqbot-sdk-rs = "0.1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 serde_json = "1"
 ```
 
-SDK 的异步 API 以 Tokio 为基础，`serde_json` 用于官方接口中可扩展的请求体。
+SDK 的异步 API 以 Tokio 为基础，`serde_json` 用于官方接口中可扩展的请求体。包已发布到 [crates.io](https://crates.io/crates/qqbot-sdk-rs)，API 文档在 [docs.rs](https://docs.rs/qqbot-sdk-rs)；需要跟踪 `main` 上的未发布改动时，可改用 `qqbot-sdk-rs = { git = "https://github.com/Lovely-02/qqbot-sdk-rs.git", branch = "main" }`。
 
 ## 创建客户端 🪄
 
@@ -21,11 +21,11 @@ SDK 的异步 API 以 Tokio 为基础，`serde_json` 用于官方接口中可扩
 
 创建时选择 Bot 的运行模式。WebSocket 区分公域和私域，Webhook 的订阅范围由开放平台配置：
 
-| 模式                        | 频道范围       | 事件接入  |
-| --------------------------- | -------------- | --------- |
-| `BotMode::PublicWebSocket`  | 公域           | WebSocket |
-| `BotMode::PrivateWebSocket` | 私域           | WebSocket |
-| `BotMode::Webhook`          | 开放平台配置   | Webhook   |
+| 模式                        | 频道范围     | 事件接入  |
+| --------------------------- | ------------ | --------- |
+| `BotMode::PublicWebSocket`  | 公域         | WebSocket |
+| `BotMode::PrivateWebSocket` | 私域         | WebSocket |
+| `BotMode::Webhook`          | 开放平台配置 | Webhook   |
 
 ```rust,no_run
 use qqbot_sdk_rs::{Bot, Result};

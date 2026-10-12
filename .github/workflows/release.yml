@@ -47,7 +47,7 @@ jobs:
         uses: puniyu/setup-rust@9c9edfa6689a9c0e20ddea70bff5adaf5b946f28 # main
         with:
           cache: true
-          prefix-key: 'puniyu-logger'
+          prefix-key: 'qqbot-sdk-rs'
 
       - name: 单元测试
         run: cargo test
@@ -67,7 +67,7 @@ jobs:
         uses: puniyu/setup-rust@9c9edfa6689a9c0e20ddea70bff5adaf5b946f28 # main
         with:
           cache: true
-          prefix-key: 'puniyu-logger'
+          prefix-key: 'qqbot-sdk-rs'
 
       - name: 发布
         run: |

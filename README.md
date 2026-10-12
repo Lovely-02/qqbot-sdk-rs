@@ -1,5 +1,9 @@
 # qqbot-sdk-rs：QQ Bot SDK for Rust 🌸
 
+[![crates.io](https://img.shields.io/crates/v/qqbot-sdk-rs.svg)](https://crates.io/crates/qqbot-sdk-rs)
+[![docs.rs](https://docs.rs/qqbot-sdk-rs/badge.svg)](https://docs.rs/qqbot-sdk-rs)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 一个轻巧、异步、可复用的 QQ 官方机器人 SDK。它像一只认真工作的樱花小助手：负责鉴权、发消息、收事件、管理群和频道，把重复的 HTTP/WebSocket 细节交给 SDK 处理。✨
 
 项目基于 `reqwest`、`tokio`、`tokio-tungstenite`、`serde` 和 `tracing`，适合做聊天机器人、通知机器人、频道工具和自动化服务。
@@ -23,12 +27,16 @@
 
 ```toml
 [dependencies]
-qqbot-sdk-rs = { git = "https://github.com/Lovely-02/qqbot-sdk-rs.git", branch = "main" }
+qqbot-sdk-rs = "0.1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 serde_json = "1"
 ```
 
-发布到 crates.io 后，也可以把 `path` 换成对应版本号。
+包已经发布到 [crates.io](https://crates.io/crates/qqbot-sdk-rs)，API 文档在 [docs.rs](https://docs.rs/qqbot-sdk-rs)。需要最新未发布改动时，也可以改成 Git 依赖：
+
+```toml
+qqbot-sdk-rs = { git = "https://github.com/Lovely-02/qqbot-sdk-rs.git", branch = "main" }
+```
 
 ## 五分钟上手：发一条消息 💌
 
@@ -52,11 +60,11 @@ SDK 会自动获取并缓存 AccessToken，并在请求中加入 `Authorization:
 
 创建 Bot 时，WebSocket 需要选择公域或私域；Webhook 使用独立的 `BotMode::Webhook`：
 
-| 模式                        | 频道范围       | 事件接入  |
-| --------------------------- | -------------- | --------- |
-| `BotMode::PublicWebSocket`  | 公域           | WebSocket |
-| `BotMode::PrivateWebSocket` | 私域           | WebSocket |
-| `BotMode::Webhook`          | 开放平台配置   | Webhook   |
+| 模式                        | 频道范围     | 事件接入  |
+| --------------------------- | ------------ | --------- |
+| `BotMode::PublicWebSocket`  | 公域         | WebSocket |
+| `BotMode::PrivateWebSocket` | 私域         | WebSocket |
+| `BotMode::Webhook`          | 开放平台配置 | Webhook   |
 
 网关场景建议使用 `GatewayConfig::for_bot(&bot)` 生成与 Bot 模式匹配的频道消息 Intents；单聊、群聊、频道私信等特殊事件需要先在开放平台开通权限，再通过 `GatewayConfig.intents` 显式加入对应位。
 
