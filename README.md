@@ -181,3 +181,7 @@ cargo build --release --bin qqbot-sdk-rs
 - [06 事件与网关](docs/06-events.md)：强类型事件、`event.reply`、WebSocket 和 Webhook。
 - [07 工程与排错](docs/07-operations.md)：日志、错误、限频、安全和发布检查。
 - [08 Bot 工具箱](docs/08-bot-tools.md)：Bot 信息、面板、菜单、互动回调和跳转链接。
+
+## 许可证 📜
+
+本项目采用 [MIT 许可证](LICENSE)。
