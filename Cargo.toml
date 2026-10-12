@@ -1,6 +1,6 @@
 [package]
 name = "qqbot-sdk-rs"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2024"
 rust-version = "1.88"
 description = "轻巧、异步的 QQ 官方机器人 SDK：鉴权、消息、事件、群与频道管理"
