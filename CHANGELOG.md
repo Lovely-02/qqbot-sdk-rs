@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.2](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.1.1...qqbot-sdk-rs-v0.1.2) (2026-10-12)
+
+
+### 🐛 Bug 修复
+
+* 修复Github构建 ([dc3a6ee](https://github.com/Lovely-02/qqbot-sdk-rs/commit/dc3a6eedbb924d2a163f2d135477656dbf85d10c))
+* 修复分片上传与 Webhook 验签缺陷，并拆分超大模块 ([992e851](https://github.com/Lovely-02/qqbot-sdk-rs/commit/992e851ff4e2b6840e8a34abff862b6da5ea256b))
+* 修复消息订阅 ([c2433b2](https://github.com/Lovely-02/qqbot-sdk-rs/commit/c2433b278d2bd4aac244aebacd4feeeb8a9a72d8))
+
+
+### 🤖 CI/CD 配置
+
+* 发布到crates.io ([4395fa8](https://github.com/Lovely-02/qqbot-sdk-rs/commit/4395fa8f4e63c34f33d5877b9a43046446e819cf))
+
 ## [0.1.1](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.1.0...qqbot-sdk-rs-v0.1.1) (2026-09-06)
 
 
