@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.1.2...qqbot-sdk-rs-v0.1.3) (2026-10-12)
+
+
+### 📝 文档
+
+* 更新文档 ([1a3790a](https://github.com/Lovely-02/qqbot-sdk-rs/commit/1a3790a127cc2cf81f26e879766fbc47306ee188))
+
 ## [0.1.2](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.1.1...qqbot-sdk-rs-v0.1.2) (2026-10-12)
 
 
