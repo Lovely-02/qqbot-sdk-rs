@@ -95,6 +95,9 @@ impl From<serde_json::Error> for GatewayFailure {
 
 impl GatewayClient {
     /// 创建网关客户端。
+    ///
+    /// # Errors
+    /// Bot 模式不是 WebSocket、Intents 超出公私域订阅限制或 `shard` 参数非法时返回 `SdkError::InvalidInput`。
     pub fn new(
         client: Arc<QQBotClient>,
         router: crate::events::EventRouter,
@@ -137,6 +140,9 @@ impl GatewayClient {
     }
 
     /// 连接网关并运行事件循环，支持重连。
+    ///
+    /// # Errors
+    /// 网关鉴权、协议或事件分发失败时返回 `SdkError`；启用自动重连时会持续重试，只有不可恢复的错误才返回。
     pub async fn run(&self) -> Result<()> {
         let mut attempts = 0u32;
         loop {

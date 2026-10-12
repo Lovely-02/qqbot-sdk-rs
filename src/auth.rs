@@ -51,6 +51,9 @@ impl AccessTokenManager {
     }
 
     /// 获取有效的 AccessToken。
+    ///
+    /// # Errors
+    /// 请求 AccessToken 失败、HTTP 错误、响应解析失败或返回空 Token 时返回 `SdkError`。
     pub async fn token(&self) -> Result<String> {
         {
             let cached = self.cached.lock().await;

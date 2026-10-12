@@ -170,6 +170,9 @@ impl SakuraLogger {
     }
 
     /// 初始化默认日志。
+    ///
+    /// # Errors
+    /// 全局订阅器已初始化过或初始化失败时返回 `SdkError::Logging`。
     pub fn init() -> Result<WorkerGuard> {
         Self::default().try_init()
     }
@@ -196,6 +199,9 @@ impl SakuraLogger {
     }
 
     /// 初始化日志并返回写入守卫。
+    ///
+    /// # Errors
+    /// 全局订阅器已初始化过或初始化失败时返回 `SdkError::Logging`。
     pub fn try_init(self) -> Result<WorkerGuard> {
         let writer: Box<dyn Write + Send> = match &self.target {
             LogTarget::Stdout => Box::new(std::io::stdout()),

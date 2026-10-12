@@ -17,6 +17,9 @@ pub struct Payload<T = serde_json::Value> {
 
 impl<T: DeserializeOwned + Default> Payload<T> {
     /// 从 JSON 文本解析 Payload。
+    ///
+    /// # Errors
+    /// 输入不是合法 JSON 时返回 `SdkError::Serialization`。
     pub fn parse(input: &str) -> crate::Result<Self> {
         Ok(serde_json::from_str(input)?)
     }

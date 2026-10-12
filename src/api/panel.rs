@@ -10,6 +10,9 @@ pub struct PanelApi<'a> {
 
 impl<'a> PanelApi<'a> {
     /// 按场景和分页参数查询面板；`scope` 支持 `c2c`、`group`、`channel`、`dm`。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn list_with_options(
         &self,
         scope: &str,
@@ -27,16 +30,25 @@ impl<'a> PanelApi<'a> {
     }
 
     /// 获取指定场景的第一页面板。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn list(&self, scope: &str) -> Result<Value> {
         self.list_with_options(scope, None, None).await
     }
     /// 创建面板。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn create(&self, body: &Value) -> Result<Value> {
         self.client
             .request_json(Method::POST, "/v2/panels", Some(body))
             .await
     }
     /// 获取面板详情。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn get(&self, panel_id: &str) -> Result<Value> {
         self.client
             .request_json(
@@ -47,6 +59,9 @@ impl<'a> PanelApi<'a> {
             .await
     }
     /// 更新面板。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn update(&self, panel_id: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(
@@ -57,6 +72,9 @@ impl<'a> PanelApi<'a> {
             .await
     }
     /// 删除面板。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn delete(&self, panel_id: &str) -> Result<()> {
         self.client
             .request_empty::<Value>(
@@ -67,6 +85,9 @@ impl<'a> PanelApi<'a> {
             .await
     }
     /// 更新面板投放目标。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn update_target(&self, panel_id: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(

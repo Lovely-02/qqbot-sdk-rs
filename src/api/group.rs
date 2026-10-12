@@ -10,6 +10,9 @@ pub struct GroupApi<'a> {
 
 impl<'a> GroupApi<'a> {
     /// 获取群信息。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn get(&self, openid: &str) -> Result<Group> {
         self.client
             .request_json(
@@ -21,12 +24,18 @@ impl<'a> GroupApi<'a> {
     }
 
     /// 获取机器人在群内的状态。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn bot_state(&self, group_openid: &str) -> Result<Value> {
         self.get_value(&format!("/v2/groups/{}/bot_state", segment(group_openid)))
             .await
     }
 
     /// 上传群聊富媒体文件。请求体可使用官方的 URL 直传或分片上传字段。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn upload_file(&self, group_openid: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(
@@ -37,12 +46,18 @@ impl<'a> GroupApi<'a> {
             .await
     }
     /// 获取群成员列表。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn members(&self, group_openid: &str) -> Result<Value> {
         self.get_value(&format!("/v2/groups/{}/members", segment(group_openid)))
             .await
     }
 
     /// 获取群成员列表并传入官方分页游标。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn members_page(&self, group_openid: &str, cursor: Option<&str>) -> Result<Value> {
         let query = optional_query([("cursor", cursor.map(str::to_owned))]);
         self.client
@@ -55,6 +70,9 @@ impl<'a> GroupApi<'a> {
             .await
     }
     /// 获取单个群成员。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn member(&self, group_openid: &str, member_openid: &str) -> Result<Value> {
         self.get_value(&format!(
             "/v2/groups/{}/members/{}",
@@ -64,6 +82,9 @@ impl<'a> GroupApi<'a> {
         .await
     }
     /// 获取加群申请列表。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn join_request_list(&self, group_openid: &str) -> Result<Value> {
         self.get_value(&format!(
             "/v2/groups/{}/join_request_list",
@@ -72,6 +93,9 @@ impl<'a> GroupApi<'a> {
         .await
     }
     /// 获取群禁言/限制聊天设置。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn restrict_chat_setting(&self, group_openid: &str) -> Result<Value> {
         self.get_value(&format!(
             "/v2/groups/{}/restrict_chat_setting",
@@ -80,6 +104,9 @@ impl<'a> GroupApi<'a> {
         .await
     }
     /// 修改群禁言/限制聊天设置。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn update_restrict_chat_setting(
         &self,
         group_openid: &str,
@@ -95,6 +122,9 @@ impl<'a> GroupApi<'a> {
     }
 
     /// 获取加群申请列表并传入分页参数。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn join_request_list_page(
         &self,
         group_openid: &str,
@@ -115,6 +145,9 @@ impl<'a> GroupApi<'a> {
             .await
     }
     /// 批量移除群成员。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn batch_remove_members(&self, group_openid: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(
@@ -125,6 +158,9 @@ impl<'a> GroupApi<'a> {
             .await
     }
     /// 处理指定成员的加群申请。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn approve_join_request(
         &self,
         group_openid: &str,
@@ -144,6 +180,9 @@ impl<'a> GroupApi<'a> {
             .await
     }
     /// 获取群成员黑名单。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn member_blacklist(&self, group_openid: &str) -> Result<Value> {
         self.get_value(&format!(
             "/v2/groups/{}/member_blacklist",
@@ -153,6 +192,9 @@ impl<'a> GroupApi<'a> {
     }
 
     /// 获取群成员黑名单并传入官方分页参数。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn member_blacklist_page(
         &self,
         group_openid: &str,
@@ -173,6 +215,9 @@ impl<'a> GroupApi<'a> {
             .await
     }
     /// 更新群成员黑名单。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn update_member_blacklist(&self, group_openid: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(
@@ -183,6 +228,9 @@ impl<'a> GroupApi<'a> {
             .await
     }
     /// 创建入群审批策略。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn create_join_approval_strategy(&self, body: &Value) -> Result<Value> {
         self.client
             .request_json(
@@ -193,10 +241,16 @@ impl<'a> GroupApi<'a> {
             .await
     }
     /// 查询入群审批策略。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn list_join_approval_strategies(&self) -> Result<Value> {
         self.get_value("/v2/groups/join_approval_strategy").await
     }
     /// 更新入群审批策略。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn update_join_approval_strategy(
         &self,
         strategy_id: &str,
@@ -211,6 +265,9 @@ impl<'a> GroupApi<'a> {
             .await
     }
     /// 删除入群审批策略。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn delete_join_approval_strategy(&self, strategy_id: &str) -> Result<()> {
         self.client
             .request_empty::<Value>(
@@ -221,6 +278,9 @@ impl<'a> GroupApi<'a> {
             .await
     }
     /// 执行入群审批策略。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn execute_join_approval_strategy(
         &self,
         strategy_id: &str,
@@ -238,6 +298,9 @@ impl<'a> GroupApi<'a> {
             .await
     }
     /// 更新入群审批策略白名单。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn whitelist_join_approval_strategy(
         &self,
         strategy_id: &str,
@@ -256,6 +319,9 @@ impl<'a> GroupApi<'a> {
     }
 
     /// 分片上传准备。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn upload_prepare(&self, group_id: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(
@@ -266,6 +332,9 @@ impl<'a> GroupApi<'a> {
             .await
     }
     /// 分片上传完成。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn upload_part_finish(&self, group_id: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(

@@ -22,6 +22,10 @@ impl GroupHandle {
         }
     }
 
+    /// 发送群消息。
+    ///
+    /// # Errors
+    /// 会话操作最终调用 HTTP API，失败时返回鉴权、序列化、限频或平台业务错误。
     pub async fn send(&self, message: impl Into<Sendable>) -> Result<Message> {
         self.client
             .api()
@@ -30,6 +34,10 @@ impl GroupHandle {
             .await
     }
 
+    /// 撤回群消息。
+    ///
+    /// # Errors
+    /// 会话操作最终调用 HTTP API，失败时返回鉴权、序列化、限频或平台业务错误。
     pub async fn recall(&self, message_id: &str) -> Result<()> {
         self.client
             .api()
@@ -38,14 +46,26 @@ impl GroupHandle {
             .await
     }
 
+    /// 获取群信息。
+    ///
+    /// # Errors
+    /// 会话操作最终调用 HTTP API，失败时返回鉴权、序列化、限频或平台业务错误。
     pub async fn info(&self) -> Result<Group> {
         self.client.api().groups().get(&self.id).await
     }
 
+    /// 获取群成员列表。
+    ///
+    /// # Errors
+    /// 会话操作最终调用 HTTP API，失败时返回鉴权、序列化、限频或平台业务错误。
     pub async fn members(&self) -> Result<serde_json::Value> {
         self.client.api().groups().members(&self.id).await
     }
 
+    /// 获取群成员详情。
+    ///
+    /// # Errors
+    /// 会话操作最终调用 HTTP API，失败时返回鉴权、序列化、限频或平台业务错误。
     pub async fn member(&self, member_openid: &str) -> Result<serde_json::Value> {
         self.client
             .api()
@@ -79,6 +99,10 @@ impl UserHandle {
         }
     }
 
+    /// 发送单聊消息。
+    ///
+    /// # Errors
+    /// 会话操作最终调用 HTTP API，失败时返回鉴权、序列化、限频或平台业务错误。
     pub async fn send(&self, message: impl Into<Sendable>) -> Result<Message> {
         self.client
             .api()
@@ -87,6 +111,10 @@ impl UserHandle {
             .await
     }
 
+    /// 撤回单聊消息。
+    ///
+    /// # Errors
+    /// 会话操作最终调用 HTTP API，失败时返回鉴权、序列化、限频或平台业务错误。
     pub async fn recall(&self, message_id: &str) -> Result<()> {
         self.client
             .api()
@@ -127,6 +155,9 @@ impl GroupMemberHandle {
     }
 
     /// 获取群成员详情。
+    ///
+    /// # Errors
+    /// 会话操作最终调用 HTTP API，失败时返回鉴权、序列化、限频或平台业务错误。
     pub async fn info(&self) -> Result<serde_json::Value> {
         self.client
             .api()
@@ -161,6 +192,10 @@ impl ChannelHandle {
         }
     }
 
+    /// 发送子频道消息。
+    ///
+    /// # Errors
+    /// 会话操作最终调用 HTTP API，失败时返回鉴权、序列化、限频或平台业务错误。
     pub async fn send(&self, message: impl Into<Sendable>) -> Result<Message> {
         self.client
             .api()
@@ -169,6 +204,10 @@ impl ChannelHandle {
             .await
     }
 
+    /// 撤回子频道消息。
+    ///
+    /// # Errors
+    /// 会话操作最终调用 HTTP API，失败时返回鉴权、序列化、限频或平台业务错误。
     pub async fn recall(&self, message_id: &str, hide_tip: bool) -> Result<()> {
         self.client
             .api()
@@ -177,6 +216,10 @@ impl ChannelHandle {
             .await
     }
 
+    /// 获取子频道信息。
+    ///
+    /// # Errors
+    /// 会话操作最终调用 HTTP API，失败时返回鉴权、序列化、限频或平台业务错误。
     pub async fn info(&self) -> Result<Channel> {
         self.client.api().channels().get(&self.id).await
     }
@@ -206,6 +249,10 @@ impl DirectHandle {
         }
     }
 
+    /// 发送频道私信消息。
+    ///
+    /// # Errors
+    /// 会话操作最终调用 HTTP API，失败时返回鉴权、序列化、限频或平台业务错误。
     pub async fn send(&self, message: impl Into<Sendable>) -> Result<Message> {
         self.client
             .api()
@@ -214,6 +261,10 @@ impl DirectHandle {
             .await
     }
 
+    /// 撤回频道私信消息。
+    ///
+    /// # Errors
+    /// 会话操作最终调用 HTTP API，失败时返回鉴权、序列化、限频或平台业务错误。
     pub async fn recall(&self, message_id: &str, hide_tip: bool) -> Result<()> {
         self.client
             .api()
@@ -247,10 +298,18 @@ impl GuildHandle {
         }
     }
 
+    /// 获取频道信息。
+    ///
+    /// # Errors
+    /// 会话操作最终调用 HTTP API，失败时返回鉴权、序列化、限频或平台业务错误。
     pub async fn info(&self) -> Result<Guild> {
         self.client.api().guilds().get(&self.id).await
     }
 
+    /// 获取频道下的子频道列表。
+    ///
+    /// # Errors
+    /// 会话操作最终调用 HTTP API，失败时返回鉴权、序列化、限频或平台业务错误。
     pub async fn channels(&self) -> Result<Vec<Channel>> {
         self.client.api().guilds().channels(&self.id).await
     }
@@ -287,6 +346,9 @@ impl GuildMemberHandle {
     }
 
     /// 获取频道成员详情。
+    ///
+    /// # Errors
+    /// 会话操作最终调用 HTTP API，失败时返回鉴权、序列化、限频或平台业务错误。
     pub async fn info(&self) -> Result<serde_json::Value> {
         self.client
             .api()

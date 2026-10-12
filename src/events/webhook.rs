@@ -17,6 +17,9 @@ pub struct WebhookVerifier {
 
 impl WebhookVerifier {
     /// 从 Bot Secret 创建校验器。
+    ///
+    /// # Errors
+    /// `bot_secret` 为空时返回 `SdkError::Auth`。
     pub fn from_secret(bot_secret: &str) -> Result<Self> {
         if bot_secret.is_empty() {
             return Err(SdkError::Auth("Bot Secret 不能为空".into()));
@@ -27,6 +30,9 @@ impl WebhookVerifier {
     }
 
     /// 从 64 位十六进制公钥创建校验器。
+    ///
+    /// # Errors
+    /// 公钥不是合法十六进制、不是 32 字节或不是有效 ed25519 公钥时返回 `SdkError::Auth`。
     pub fn from_hex(public_key: &str) -> Result<Self> {
         let bytes = hex::decode(public_key)
             .map_err(|e| SdkError::Auth(format!("公钥不是合法十六进制: {e}")))?;
@@ -41,7 +47,16 @@ impl WebhookVerifier {
     }
 
     /// 校验 `timestamp + body` 签名。
+    ///
+    /// # Errors
+    /// 时间戳或签名为空、签名不是合法十六进制、签名长度不为 64 字节，
+    /// 或签名与该公钥不匹配时返回 [`SdkError::InvalidSignature`]。
     pub fn verify(&self, timestamp: &str, signature_hex: &str, body: &[u8]) -> Result<()> {
+        // 时间戳是签名串的组成部分；缺失时验签会退化为只校验 body，
+        // 与官方 `X-Signature-Timestamp` 契约不符，因此显式拒绝。
+        if timestamp.is_empty() {
+            return Err(SdkError::InvalidSignature);
+        }
         let signature_bytes = hex::decode(signature_hex).map_err(|_| SdkError::InvalidSignature)?;
         let signature =
             Signature::from_slice(&signature_bytes).map_err(|_| SdkError::InvalidSignature)?;
@@ -78,6 +93,9 @@ impl Webhook {
     }
 
     /// 为平台 `op=13` 回调生成验证响应。
+    ///
+    /// # Errors
+    /// 请求体不是合法 JSON（`SdkError::Serialization`）、`op` 不是 13、缺少 `plain_token`/`event_ts` 时返回 `SdkError::InvalidInput`；`bot_secret` 为空时返回 `SdkError::Auth`。
     pub fn validation_response(
         body: &[u8],
         bot_secret: &str,
@@ -114,6 +132,9 @@ impl Webhook {
     }
 
     /// 校验请求头并解析事件。
+    ///
+    /// # Errors
+    /// 验签失败返回 `SdkError::InvalidSignature`；请求体不是合法 JSON 时返回 `SdkError::Serialization`。
     pub fn parse(&self, timestamp: &str, signature: &str, body: &[u8]) -> Result<Payload<Value>> {
         self.verifier.verify(timestamp, signature, body)?;
         debug!(
@@ -124,6 +145,9 @@ impl Webhook {
     }
 
     /// 校验并直接返回 SDK 事件信封。
+    ///
+    /// # Errors
+    /// 验签失败返回 `SdkError::InvalidSignature`；请求体不是合法 JSON 时返回 `SdkError::Serialization`。
     pub fn parse_envelope(
         &self,
         timestamp: &str,
@@ -140,6 +164,9 @@ impl Webhook {
     }
 
     /// 验签、解析并分发事件。
+    ///
+    /// # Errors
+    /// 当前 Bot 不是 Webhook 模式时返回 `SdkError::InvalidInput`；验签、解析失败或任一处理器返回错误时原样向上返回。
     pub async fn dispatch(
         &self,
         timestamp: &str,
@@ -167,4 +194,30 @@ fn secret_seed(secret: &str) -> [u8; 32] {
     let mut seed = [0u8; 32];
     seed.copy_from_slice(&bytes[..32]);
     seed
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 官方文档回调验证示例：secret 与期望签名均已固定，避免实现漂移。
+    #[test]
+    fn validation_response_matches_official_vector() {
+        let body =
+            br#"{"d":{"plain_token":"Arq0D5A61EgUu4OxUvOp","event_ts":"1725442341"},"op":13}"#;
+        let response = Webhook::validation_response(body, "DG5g3B4j9X2KOErG")
+            .expect("官方向量应能生成验证响应");
+        assert_eq!(response.plain_token, "Arq0D5A61EgUu4OxUvOp");
+        assert_eq!(
+            response.signature,
+            "87befc99c42c651b3aac0278e71ada338433ae26fcb24307bdc5ad38c1adc2d01bcfcadc0842edac85e85205028a1132afe09280305f13aa6909ffc2d652c706"
+        );
+    }
+
+    #[test]
+    fn empty_timestamp_is_rejected() {
+        let verifier = WebhookVerifier::from_secret("DG5g3B4j9X2KOErG").expect("secret 合法");
+        let error = verifier.verify("", "00", b"body").unwrap_err();
+        assert!(matches!(error, SdkError::InvalidSignature));
+    }
 }

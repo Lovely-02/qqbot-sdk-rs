@@ -490,6 +490,9 @@ impl EventRouter {
     }
 
     /// 分发事件，按注册顺序执行。
+    ///
+    /// # Errors
+    /// 任一已注册处理器返回错误时，原样向上返回该错误。
     pub async fn dispatch(&self, envelope: EventEnvelope, client: Arc<QQBotClient>) -> Result<()> {
         let display_name = event_display_name(&envelope.name);
         if let Some(event_log) = incoming_event_log(&envelope) {

@@ -10,12 +10,18 @@ pub struct UserApi<'a> {
 
 impl<'a> UserApi<'a> {
     /// 获取机器人自身信息。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn me(&self) -> Result<User> {
         self.client
             .request_json(Method::GET, "/users/@me", Option::<&Value>::None)
             .await
     }
     /// 获取机器人加入的频道列表。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn guilds(
         &self,
         before: Option<&str>,
@@ -37,6 +43,9 @@ impl<'a> UserApi<'a> {
             .await
     }
     /// 用户富媒体上传。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn upload_file(&self, user_openid: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(
@@ -47,6 +56,9 @@ impl<'a> UserApi<'a> {
             .await
     }
     /// 用户分片上传准备。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn upload_prepare(&self, user_id: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(
@@ -57,6 +69,9 @@ impl<'a> UserApi<'a> {
             .await
     }
     /// 用户分片上传完成。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn upload_part_finish(&self, user_id: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(
@@ -67,6 +82,9 @@ impl<'a> UserApi<'a> {
             .await
     }
     /// 向用户发送流式消息片段。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn send_stream_message(&self, user_openid: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(

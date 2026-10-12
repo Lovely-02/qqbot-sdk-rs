@@ -124,6 +124,9 @@ pub type Bot = QQBotClient;
 
 impl QQBotClient {
     /// 创建客户端。
+    ///
+    /// # Errors
+    /// HTTP 客户端构建失败时返回 `SdkError::Http`。
     pub fn new(
         app_id: impl Into<String>,
         app_secret: impl Into<String>,
@@ -140,6 +143,9 @@ impl QQBotClient {
     }
 
     /// 按配置创建客户端。
+    ///
+    /// # Errors
+    /// HTTP 客户端构建失败时返回 `SdkError::Http`。
     pub fn with_config(
         app_id: impl Into<String>,
         app_secret: impl Into<String>,
@@ -147,7 +153,7 @@ impl QQBotClient {
     ) -> Result<Self> {
         let http = HttpClient::builder()
             .timeout(config.request_timeout)
-            .user_agent("qqbot-sdk-rs/0.0.1")
+            .user_agent(concat!("qqbot-sdk-rs/", env!("CARGO_PKG_VERSION")))
             .build()?;
         let auth = AccessTokenManager::new(
             app_id,
@@ -239,6 +245,9 @@ impl QQBotClient {
     }
 
     /// 发送单聊消息。
+    ///
+    /// # Errors
+    /// 消息段无效或请求字段组合不合法时返回 `SdkError::InvalidInput`；发送失败时返回鉴权、序列化、限频或平台业务错误。
     pub async fn send_c2c_message(
         &self,
         user_openid: &str,
@@ -248,6 +257,9 @@ impl QQBotClient {
     }
 
     /// 发送群消息。
+    ///
+    /// # Errors
+    /// 消息段无效或请求字段组合不合法时返回 `SdkError::InvalidInput`；发送失败时返回鉴权、序列化、限频或平台业务错误。
     pub async fn send_group_message(
         &self,
         group_openid: &str,
@@ -260,6 +272,9 @@ impl QQBotClient {
     }
 
     /// 发送子频道消息。
+    ///
+    /// # Errors
+    /// 消息段无效或请求字段组合不合法时返回 `SdkError::InvalidInput`；发送失败时返回鉴权、序列化、限频或平台业务错误。
     pub async fn send_channel_message(
         &self,
         channel_id: &str,
@@ -272,6 +287,9 @@ impl QQBotClient {
     }
 
     /// 获取网关地址。
+    ///
+    /// # Errors
+    /// 获取网关地址失败或响应缺少 `url` 时返回 `SdkError`。
     pub async fn gateway_url(&self) -> Result<String> {
         if let Some(url) = &self.config.gateway_url {
             return Ok(url.clone());
@@ -285,11 +303,17 @@ impl QQBotClient {
     }
 
     /// 获取 `/gateway/bot` 的 WSS 地址。
+    ///
+    /// # Errors
+    /// 获取网关地址失败或响应缺少 `url` 时返回 `SdkError`。
     pub async fn gateway_url_bot(&self) -> Result<String> {
         Ok(self.gateway_bot().await?.url)
     }
 
     /// 获取 `/gateway/bot` 的完整响应。
+    ///
+    /// # Errors
+    /// 获取网关地址失败或响应缺少 `url` 时返回 `SdkError`。
     pub async fn gateway_bot(&self) -> Result<GatewayBotResponse> {
         self.request_json(Method::GET, "/gateway/bot", Option::<&Value>::None)
             .await

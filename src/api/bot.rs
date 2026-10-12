@@ -15,6 +15,9 @@ pub struct BotApi<'a> {
 
 impl<'a> BotApi<'a> {
     /// 获取当前机器人用户信息。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn me(&self) -> Result<User> {
         self.client
             .request_json(
@@ -26,6 +29,9 @@ impl<'a> BotApi<'a> {
     }
 
     /// 获取可访问频道列表，支持 `before`、`after`、`limit` 分页。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn guilds(
         &self,
         before: Option<&str>,
@@ -48,6 +54,9 @@ impl<'a> BotApi<'a> {
     }
 
     /// 创建频道私信（返回 `guild_id` 和 `channel_id`）。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn create_dm(&self, body: &Value) -> Result<Value> {
         self.client
             .request_json(Method::POST, "/users/@me/dms", Some(body))

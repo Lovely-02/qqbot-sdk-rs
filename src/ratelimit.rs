@@ -31,6 +31,9 @@ impl RateLimiter {
     }
 
     /// 消耗配额，超额返回 [`SdkError::RateLimited`]。
+    ///
+    /// # Errors
+    /// 超过当前窗口配额时返回 `SdkError::RateLimited`。
     pub async fn acquire(&self, key: impl Into<String>) -> Result<()> {
         let key = key.into();
         let mut windows = self.windows.lock().await;

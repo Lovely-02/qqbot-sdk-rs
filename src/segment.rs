@@ -143,6 +143,9 @@ impl MessageBuilder {
     }
 
     /// 构建无需上传的消息请求。
+    ///
+    /// # Errors
+    /// 消息段包含待上传富媒体（图片、视频、音频或文件）时返回 `SdkError::InvalidInput`，需改用 `send_*` 方法。
     pub fn build<I, S>(self, segments: I) -> Result<MessageRequest>
     where
         I: IntoIterator<Item = S>,
@@ -279,6 +282,9 @@ impl MessageRequest {
     }
 
     /// 从无需上传的消息段构建请求。
+    ///
+    /// # Errors
+    /// 消息段包含待上传富媒体（图片、视频、音频或文件）时返回 `SdkError::InvalidInput`，需改用 `send_*` 方法。
     pub fn from_segments<I, S>(segments: I) -> Result<Self>
     where
         I: IntoIterator<Item = S>,

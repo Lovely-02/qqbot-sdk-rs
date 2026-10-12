@@ -14,6 +14,9 @@ pub struct ChannelApi<'a> {
 
 impl<'a> ChannelApi<'a> {
     /// 获取子频道信息。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn get(&self, channel_id: &str) -> Result<Channel> {
         self.client
             .request_json(
@@ -25,6 +28,9 @@ impl<'a> ChannelApi<'a> {
     }
 
     /// 获取频道下的子频道列表。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn list(&self, guild_id: &str) -> Result<Vec<Channel>> {
         self.client
             .request_json(
@@ -36,6 +42,9 @@ impl<'a> ChannelApi<'a> {
     }
 
     /// 更新子频道。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn update(&self, channel_id: &str, body: &Value) -> Result<Channel> {
         self.client
             .request_json(
@@ -46,6 +55,9 @@ impl<'a> ChannelApi<'a> {
             .await
     }
     /// 删除子频道。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn delete(&self, channel_id: &str) -> Result<()> {
         self.client
             .request_empty::<Value>(
@@ -57,6 +69,9 @@ impl<'a> ChannelApi<'a> {
     }
 
     /// 发布子频道公告。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn create_announcement(&self, channel_id: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(
@@ -67,6 +82,9 @@ impl<'a> ChannelApi<'a> {
             .await
     }
     /// 删除子频道公告。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn delete_announcement(&self, channel_id: &str, message_id: &str) -> Result<()> {
         self.client
             .request_empty::<Value>(
@@ -81,6 +99,9 @@ impl<'a> ChannelApi<'a> {
             .await
     }
     /// 音频控制。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn audio_control(&self, channel_id: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(
@@ -91,6 +112,9 @@ impl<'a> ChannelApi<'a> {
             .await
     }
     /// 开启麦克风。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn enable_mic(&self, channel_id: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(
@@ -101,6 +125,9 @@ impl<'a> ChannelApi<'a> {
             .await
     }
     /// 关闭麦克风。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn disable_mic(&self, channel_id: &str) -> Result<()> {
         self.client
             .request_empty::<Value>(
@@ -111,12 +138,18 @@ impl<'a> ChannelApi<'a> {
             .await
     }
     /// 获取帖子列表。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn list_threads(&self, channel_id: &str) -> Result<Value> {
         self.require_private("论坛接口")?;
         self.get_value(&format!("/channels/{}/threads", segment(channel_id)))
             .await
     }
     /// 获取单个帖子。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn get_thread(&self, channel_id: &str, thread_id: &str) -> Result<Value> {
         self.require_private("论坛接口")?;
         self.get_value(&format!(
@@ -127,6 +160,9 @@ impl<'a> ChannelApi<'a> {
         .await
     }
     /// 创建帖子。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn create_thread(&self, channel_id: &str, body: &Value) -> Result<Value> {
         self.require_private("论坛接口")?;
         self.client
@@ -138,6 +174,9 @@ impl<'a> ChannelApi<'a> {
             .await
     }
     /// 删除帖子。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn delete_thread(&self, channel_id: &str, thread_id: &str) -> Result<()> {
         self.require_private("论坛接口")?;
         self.client
@@ -153,11 +192,17 @@ impl<'a> ChannelApi<'a> {
             .await
     }
     /// 获取精华/置顶消息。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn list_pins(&self, channel_id: &str) -> Result<Value> {
         self.get_value(&format!("/channels/{}/pins", segment(channel_id)))
             .await
     }
     /// 设置消息为精华/置顶；官方接口请求体为空对象。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn pin_message(&self, channel_id: &str, message_id: &str) -> Result<Value> {
         let body = serde_json::json!({});
         self.client
@@ -173,6 +218,9 @@ impl<'a> ChannelApi<'a> {
             .await
     }
     /// 删除消息精华/置顶状态。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn unpin_message(&self, channel_id: &str, message_id: &str) -> Result<()> {
         self.client
             .request_empty::<Value>(
@@ -187,6 +235,9 @@ impl<'a> ChannelApi<'a> {
             .await
     }
     /// 创建日程。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn create_schedule(&self, channel_id: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(
@@ -197,12 +248,18 @@ impl<'a> ChannelApi<'a> {
             .await
     }
     /// 获取日程列表。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn list_schedules(&self, channel_id: &str) -> Result<Value> {
         self.get_value(&format!("/channels/{}/schedules", segment(channel_id)))
             .await
     }
 
     /// 获取日程列表，可选 `since` 时间戳过滤结束时间。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn list_schedules_since(
         &self,
         channel_id: &str,
@@ -219,6 +276,9 @@ impl<'a> ChannelApi<'a> {
             .await
     }
     /// 获取日程详情。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn get_schedule(&self, channel_id: &str, schedule_id: &str) -> Result<Value> {
         self.get_value(&format!(
             "/channels/{}/schedules/{}",
@@ -228,6 +288,9 @@ impl<'a> ChannelApi<'a> {
         .await
     }
     /// 更新日程。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn update_schedule(
         &self,
         channel_id: &str,
@@ -247,6 +310,9 @@ impl<'a> ChannelApi<'a> {
             .await
     }
     /// 删除日程。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn delete_schedule(&self, channel_id: &str, schedule_id: &str) -> Result<()> {
         self.client
             .request_empty::<Value>(
@@ -261,6 +327,9 @@ impl<'a> ChannelApi<'a> {
             .await
     }
     /// 添加消息表情回应。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn add_reaction(
         &self,
         channel_id: &str,
@@ -284,6 +353,9 @@ impl<'a> ChannelApi<'a> {
     }
 
     /// 删除消息表情回应。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn remove_reaction(
         &self,
         channel_id: &str,
@@ -307,6 +379,9 @@ impl<'a> ChannelApi<'a> {
     }
 
     /// 查询消息表情回应用户列表。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn list_reactions(
         &self,
         channel_id: &str,
@@ -336,6 +411,9 @@ impl<'a> ChannelApi<'a> {
             .await
     }
     /// 撤回消息，`hide_tip` 对应官方 `hidetip` 查询参数。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn recall_message(
         &self,
         channel_id: &str,
@@ -359,17 +437,26 @@ impl<'a> ChannelApi<'a> {
             .map(|_| ())
     }
     /// 获取频道消息频率设置。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn message_setting(&self, guild_id: &str) -> Result<Value> {
         self.get_value(&format!("/guilds/{}/message/setting", segment(guild_id)))
             .await
     }
     /// 获取频道在线人数。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn online_numbers(&self, channel_id: &str) -> Result<Value> {
         self.get_value(&format!("/channels/{}/online_nums", segment(channel_id)))
             .await
     }
 
     /// 获取频道成员在子频道上的 API 权限。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn member_permissions(&self, channel_id: &str, user_id: &str) -> Result<Value> {
         self.get_value(&format!(
             "/channels/{}/members/{}/permissions",
@@ -379,6 +466,9 @@ impl<'a> ChannelApi<'a> {
         .await
     }
     /// 获取频道角色在子频道上的 API 权限。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn role_permissions(&self, channel_id: &str, role_id: &str) -> Result<Value> {
         self.get_value(&format!(
             "/channels/{}/roles/{}/permissions",
@@ -388,6 +478,9 @@ impl<'a> ChannelApi<'a> {
         .await
     }
     /// 更新频道成员 API 权限。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn update_member_permissions(
         &self,
         channel_id: &str,
@@ -407,6 +500,9 @@ impl<'a> ChannelApi<'a> {
             .await
     }
     /// 更新频道角色 API 权限。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。 公域 Bot 调用仅私域开放的接口时返回 `SdkError::InvalidInput`。
     pub async fn update_role_permissions(
         &self,
         channel_id: &str,

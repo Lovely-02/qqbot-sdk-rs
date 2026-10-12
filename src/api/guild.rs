@@ -14,6 +14,9 @@ pub struct GuildApi<'a> {
 
 impl<'a> GuildApi<'a> {
     /// 获取频道详情。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn get(&self, guild_id: &str) -> Result<Guild> {
         self.client
             .request_json(
@@ -25,6 +28,9 @@ impl<'a> GuildApi<'a> {
     }
 
     /// 获取频道下所有子频道。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn channels(&self, guild_id: &str) -> Result<Vec<Channel>> {
         self.client
             .request_json(
@@ -36,6 +42,9 @@ impl<'a> GuildApi<'a> {
     }
 
     /// 创建子频道。请求字段按官方文档传入。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn create_channel(&self, guild_id: &str, body: &Value) -> Result<Channel> {
         self.client
             .request_json(
@@ -47,6 +56,9 @@ impl<'a> GuildApi<'a> {
     }
 
     /// 发布频道公告。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn create_announcement(&self, guild_id: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(
@@ -57,6 +69,9 @@ impl<'a> GuildApi<'a> {
             .await
     }
     /// 删除频道公告。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn delete_announcement(&self, guild_id: &str, message_id: &str) -> Result<()> {
         self.client
             .request_empty::<Value>(
@@ -72,6 +87,9 @@ impl<'a> GuildApi<'a> {
     }
 
     /// 获取频道 API 权限。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn api_permissions(&self, guild_id: &str) -> Result<Value> {
         self.client
             .request_json(
@@ -82,6 +100,9 @@ impl<'a> GuildApi<'a> {
             .await
     }
     /// 申请频道 API 权限。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn request_api_permission(&self, guild_id: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(
@@ -93,6 +114,9 @@ impl<'a> GuildApi<'a> {
     }
 
     /// 获取频道角色列表。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn roles(&self, guild_id: &str) -> Result<Value> {
         self.client
             .request_json(
@@ -103,6 +127,9 @@ impl<'a> GuildApi<'a> {
             .await
     }
     /// 创建频道角色。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn create_role(&self, guild_id: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(
@@ -113,6 +140,9 @@ impl<'a> GuildApi<'a> {
             .await
     }
     /// 更新频道角色。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn update_role(&self, guild_id: &str, role_id: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(
@@ -123,6 +153,9 @@ impl<'a> GuildApi<'a> {
             .await
     }
     /// 删除频道角色。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn delete_role(&self, guild_id: &str, role_id: &str) -> Result<()> {
         self.client
             .request_empty::<Value>(
@@ -133,6 +166,9 @@ impl<'a> GuildApi<'a> {
             .await
     }
     /// 给频道成员授予角色。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn add_member_role(
         &self,
         guild_id: &str,
@@ -154,6 +190,9 @@ impl<'a> GuildApi<'a> {
             .await
     }
     /// 移除频道成员角色。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn remove_member_role(
         &self,
         guild_id: &str,
@@ -175,6 +214,9 @@ impl<'a> GuildApi<'a> {
     }
 
     /// 移除频道成员角色并传入请求体。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn remove_member_role_with_body(
         &self,
         guild_id: &str,
@@ -196,6 +238,9 @@ impl<'a> GuildApi<'a> {
             .await
     }
     /// 获取频道成员列表。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn members(&self, guild_id: &str) -> Result<Value> {
         self.client
             .request_json(
@@ -207,6 +252,9 @@ impl<'a> GuildApi<'a> {
     }
 
     /// 获取频道成员列表并传入官方分页参数。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn members_page(
         &self,
         guild_id: &str,
@@ -227,6 +275,9 @@ impl<'a> GuildApi<'a> {
             .await
     }
     /// 获取频道成员详情。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn member(&self, guild_id: &str, user_id: &str) -> Result<Value> {
         self.client
             .request_json(
@@ -237,6 +288,9 @@ impl<'a> GuildApi<'a> {
             .await
     }
     /// 移除频道成员。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn remove_member(&self, guild_id: &str, user_id: &str) -> Result<()> {
         self.client
             .request_empty::<Value>(
@@ -248,6 +302,9 @@ impl<'a> GuildApi<'a> {
     }
 
     /// 移除频道成员并传入踢出选项。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn remove_member_with_options(
         &self,
         guild_id: &str,
@@ -263,6 +320,9 @@ impl<'a> GuildApi<'a> {
             .await
     }
     /// 获取角色下的成员列表。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn role_members(&self, guild_id: &str, role_id: &str) -> Result<Value> {
         self.client
             .request_json(
@@ -278,6 +338,9 @@ impl<'a> GuildApi<'a> {
     }
 
     /// 获取指定角色下的成员列表并传入官方分页参数。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn role_members_page(
         &self,
         guild_id: &str,
@@ -303,6 +366,9 @@ impl<'a> GuildApi<'a> {
             .await
     }
     /// 设置单个成员禁言。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn mute_member(&self, guild_id: &str, user_id: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(
@@ -317,6 +383,9 @@ impl<'a> GuildApi<'a> {
             .await
     }
     /// 设置频道全员禁言。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn mute_guild(&self, guild_id: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(
@@ -327,6 +396,9 @@ impl<'a> GuildApi<'a> {
             .await
     }
     /// 设置频道多成员禁言。
+    ///
+    /// # Errors
+    /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn mute_members(&self, guild_id: &str, body: &Value) -> Result<Value> {
         self.client
             .request_json(
