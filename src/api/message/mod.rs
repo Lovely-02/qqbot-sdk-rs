@@ -14,6 +14,8 @@ use std::fs;
 use super::segment;
 
 mod media;
+mod upload;
+pub use media::{UploadConfig, UploadPart, UploadPrepareResponse};
 
 /// 单聊、群聊、子频道和富媒体消息 API。
 pub struct MessageApi<'a> {
@@ -245,6 +247,13 @@ impl<'a> MessageApi<'a> {
         event_id: Option<&str>,
     ) -> Result<Message> {
         let mut built = message.build()?;
+        if let Some(body) = built.raw.take() {
+            // raw 的整个请求体由调用方控制，回复辅助方法也不注入元数据。
+            return self
+                .client
+                .request_json(Method::POST, &target.path(), Some(&body))
+                .await;
+        }
         let mut channel_file = None;
         if let Some(media) = built.media.take() {
             if matches!(target, MessageTarget::Channel(_))
@@ -374,6 +383,16 @@ impl<'a> MessageApi<'a> {
             request.msg_type = Some(infer_msg_type(&request));
         }
         apply_force_verify_image_resource(&mut request)?;
+        if matches!(target, MessageTarget::C2c(_) | MessageTarget::Group(_))
+            && let Some(message_id) = request.msg_id.as_deref()
+        {
+            request.msg_seq = Some(
+                self.client
+                    .reply_sequences
+                    .reserve(&target.path(), message_id, request.msg_seq)
+                    .await?,
+            );
+        }
         self.client
             .request_json(Method::POST, &target.path(), Some(&request))
             .await
@@ -381,7 +400,9 @@ impl<'a> MessageApi<'a> {
 }
 
 fn infer_msg_type(request: &MessageRequest) -> u8 {
-    if request.media.is_some() {
+    if request.card.is_some() {
+        8
+    } else if request.media.is_some() {
         7
     } else if request.markdown.is_some() {
         2
@@ -484,9 +505,6 @@ fn set_reply_id(
     } else {
         event_id.map(str::to_owned)
     };
-    if request.msg_id.is_some() && request.msg_seq.is_none() {
-        request.msg_seq = Some(1);
-    }
     Ok(())
 }
 
@@ -496,6 +514,40 @@ fn normalize_request(
     has_file_image: bool,
     request: &mut MessageRequest,
 ) -> Result<()> {
+    if let Some(card) = &request.card {
+        card.validate()?;
+    }
+    let content = request.content.as_deref().unwrap_or_default();
+    let markdown = request
+        .markdown
+        .as_ref()
+        .and_then(|value| value.get("content"))
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let has_tag = |tag: &str| content.contains(tag) || markdown.contains(tag);
+    if has_tag("<qqbot-at-everyone")
+        && !matches!(target, MessageTarget::Group(_) | MessageTarget::Channel(_))
+    {
+        return Err(SdkError::InvalidInput(
+            "<qqbot-at-everyone /> 仅支持群聊或文字子频道".into(),
+        ));
+    }
+    if has_tag("<qqbot-at-user")
+        && !(matches!(target, MessageTarget::Channel(_))
+            || matches!(target, MessageTarget::Group(_)) && !content.contains("<qqbot-at-user"))
+    {
+        return Err(SdkError::InvalidInput(
+            "用户提及仅支持文字子频道，或群聊 Markdown".into(),
+        ));
+    }
+    if has_tag("<qqbot-cmd-enter")
+        && (!matches!(target, MessageTarget::C2c(_)) || content.contains("<qqbot-cmd-enter"))
+    {
+        return Err(SdkError::InvalidInput("回车指令仅支持单聊 Markdown".into()));
+    }
+    if content.contains("<qqbot-cmd-input") {
+        return Err(SdkError::InvalidInput("参数指令仅支持 Markdown".into()));
+    }
     if request.msg_id.is_some() && request.event_id.is_some() {
         return Err(SdkError::InvalidInput(
             "msg_id 与 event_id 必须二选一".into(),
@@ -515,7 +567,7 @@ fn normalize_request(
             }
             if request.image.is_some() || request.embed.is_some() || request.ark.is_some() {
                 return Err(SdkError::InvalidInput(
-                    "单聊官方仅支持文本、Markdown、输入状态和富媒体消息".into(),
+                    "单聊官方仅支持文本、Markdown、输入状态、富媒体和图文卡片消息".into(),
                 ));
             }
             if request.markdown.is_some() && request.content.is_some() {
@@ -533,20 +585,22 @@ fn normalize_request(
                 request.markdown.as_ref().map(|_| 2),
                 request.input_notify.as_ref().map(|_| 6),
                 request.media.as_ref().map(|_| 7),
+                request.card.as_ref().map(|_| 8),
             ]
             .into_iter()
             .flatten()
             .collect::<Vec<_>>();
             if primary.len() != 1 {
                 return Err(SdkError::InvalidInput(
-                    "单聊消息必须且只能包含 content、markdown、input_notify、media 之一".into(),
+                    "单聊消息必须且只能包含 content、markdown、input_notify、media、card 之一"
+                        .into(),
                 ));
             }
             if let Some(msg_type) = request.msg_type
-                && !matches!(msg_type, 0 | 2 | 6 | 7)
+                && !matches!(msg_type, 0 | 2 | 6 | 7 | 8)
             {
                 return Err(SdkError::InvalidInput(
-                    "单聊 msg_type 只能是 0、2、6 或 7".into(),
+                    "单聊 msg_type 只能是 0、2、6、7 或 8".into(),
                 ));
             }
             if request
@@ -603,7 +657,7 @@ fn normalize_request(
                 || request.is_wakeup.is_some()
             {
                 return Err(SdkError::InvalidInput(
-                    "群聊官方仅支持文本、Markdown 和富媒体消息".into(),
+                    "群聊官方仅支持文本、Markdown、富媒体和图文卡片消息".into(),
                 ));
             }
             if request.markdown.is_some() && request.content.is_some() {
@@ -620,20 +674,21 @@ fn normalize_request(
                 request.content.as_ref().map(|_| 0),
                 request.markdown.as_ref().map(|_| 2),
                 request.media.as_ref().map(|_| 7),
+                request.card.as_ref().map(|_| 8),
             ]
             .into_iter()
             .flatten()
             .collect::<Vec<_>>();
             if primary.len() != 1 {
                 return Err(SdkError::InvalidInput(
-                    "群聊消息必须且只能包含 content、markdown、media 之一".into(),
+                    "群聊消息必须且只能包含 content、markdown、media、card 之一".into(),
                 ));
             }
             if let Some(msg_type) = request.msg_type
-                && !matches!(msg_type, 0 | 2 | 7)
+                && !matches!(msg_type, 0 | 2 | 7 | 8)
             {
                 return Err(SdkError::InvalidInput(
-                    "群聊 msg_type 只能是 0、2 或 7".into(),
+                    "群聊 msg_type 只能是 0、2、7 或 8".into(),
                 ));
             }
             if request
@@ -656,13 +711,29 @@ fn normalize_request(
                     "force_verify_image_resource 仅适用于单聊和群聊 Markdown 消息".into(),
                 ));
             }
-            if request.keyboard.is_some()
+            if request.card.is_some()
                 || request.media.is_some()
                 || request.input_notify.is_some()
                 || request.is_wakeup.is_some()
             {
                 return Err(SdkError::InvalidInput(
-                    "频道消息官方不支持 keyboard、media、input_notify 或 is_wakeup".into(),
+                    "频道消息官方不支持 media、card、input_notify 或 is_wakeup".into(),
+                ));
+            }
+            if request.keyboard.is_some() && request.markdown.is_none() {
+                return Err(SdkError::InvalidInput(
+                    "频道 keyboard 必须与 Markdown 一起发送".into(),
+                ));
+            }
+            if request.markdown.is_some()
+                && (has_file_image
+                    || request.content.is_some()
+                    || request.embed.is_some()
+                    || request.ark.is_some()
+                    || request.image.is_some())
+            {
+                return Err(SdkError::InvalidInput(
+                    "频道 Markdown 只能与 keyboard 组合，不能同时携带其他内容".into(),
                 ));
             }
             if !has_file_image
@@ -689,4 +760,178 @@ fn normalize_request(
 pub enum MediaTarget<'a> {
     C2c(&'a str),
     Group(&'a str),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{MessageCard, TuwenContent, segment};
+    use serde_json::json;
+
+    fn card() -> MessageRequest {
+        MessageRequest {
+            card: Some(MessageCard::tuwen(TuwenContent {
+                title: "今日更新".into(),
+                description: "内容介绍".into(),
+                url: "https://example.com/article".into(),
+                pic_url: "https://example.com/image.png".into(),
+            })),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn modern_mentions_and_commands_follow_official_scene_rules() {
+        let built = Sendable::from(segment::at_user("user")).build().unwrap();
+        assert_eq!(
+            built.request.content.as_deref(),
+            Some("<qqbot-at-user id=\"user\" />")
+        );
+        let mut request = built.request;
+        assert!(normalize_request(MessageTarget::Group("g"), false, false, &mut request).is_err());
+        normalize_request(MessageTarget::Channel("c"), false, false, &mut request).unwrap();
+        let mut request = Sendable::from(segment::markdown("<qqbot-at-user id=\"member\" /> 你好"))
+            .build()
+            .unwrap()
+            .request;
+        normalize_request(MessageTarget::Group("g"), false, false, &mut request).unwrap();
+        assert!(normalize_request(MessageTarget::C2c("u"), false, false, &mut request).is_err());
+        let mut request = Sendable::from(segment::cmd_enter("/help & \"now\""))
+            .build()
+            .unwrap()
+            .request;
+        let content = request.markdown.as_ref().unwrap()["content"]
+            .as_str()
+            .unwrap();
+        assert!(content.contains("%2Fhelp%20%26%20%22now%22"));
+        normalize_request(MessageTarget::C2c("u"), false, false, &mut request).unwrap();
+        for target in [MessageTarget::Group("g"), MessageTarget::Channel("c")] {
+            assert!(normalize_request(target, false, false, &mut request.clone()).is_err());
+        }
+        let request = Sendable::from(segment::cmd_input(
+            "/search 空格",
+            Some("搜索".into()),
+            true,
+        ))
+        .build()
+        .unwrap()
+        .request;
+        assert!(
+            request.markdown.unwrap()["content"]
+                .as_str()
+                .unwrap()
+                .contains("reference=\"true\"")
+        );
+        assert!(
+            Sendable::from(segment::cmd_enter("中".repeat(101)))
+                .build()
+                .is_err()
+        );
+        assert!(Sendable::from(segment::at_user("bad\"id")).build().is_err());
+    }
+
+    #[test]
+    fn cards_support_c2c_and_group_and_infer_type_eight() {
+        for target in [MessageTarget::C2c("user"), MessageTarget::Group("group")] {
+            let mut request = card();
+            normalize_request(target, false, false, &mut request).unwrap();
+            assert_eq!(infer_msg_type(&request), 8);
+            let wire = serde_json::to_value(&request).unwrap();
+            assert_eq!(wire["card"]["type"], "tuwen");
+            assert_eq!(wire["card"]["content"]["title"], "今日更新");
+            assert!(wire.get("content").is_none());
+            request.msg_type = Some(8);
+            normalize_request(target, false, false, &mut request).unwrap();
+            request.msg_type = Some(7);
+            assert!(normalize_request(target, false, false, &mut request).is_err());
+        }
+        let built = segment::card(card().card.unwrap()).into();
+        let built = Sendable::build(built).unwrap();
+        assert_eq!(built.request.msg_type, Some(8));
+    }
+
+    #[test]
+    fn cards_reject_mixed_content_and_unsupported_scenes() {
+        for target in [MessageTarget::C2c("u"), MessageTarget::Group("g")] {
+            for extra in [
+                json!({"content":"text"}),
+                json!({"markdown":{"content":"text"}}),
+                json!({"media":{"file_info":"file"}}),
+            ] {
+                let mut value = serde_json::to_value(card()).unwrap();
+                value
+                    .as_object_mut()
+                    .unwrap()
+                    .extend(extra.as_object().unwrap().clone());
+                let mut request = serde_json::from_value(value).unwrap();
+                assert!(normalize_request(target, false, false, &mut request).is_err());
+            }
+        }
+        for target in [MessageTarget::Channel("c"), MessageTarget::Dm("d")] {
+            assert!(normalize_request(target, false, false, &mut card()).is_err());
+        }
+    }
+
+    #[test]
+    fn card_limits_count_unicode_characters_and_require_https() {
+        let mut request = card();
+        let content = &mut request.card.as_mut().unwrap().content;
+        content.title = "中".repeat(50);
+        content.description = "文".repeat(200);
+        request.card.as_ref().unwrap().validate().unwrap();
+        request.card.as_mut().unwrap().content.title.push('字');
+        assert!(request.card.as_ref().unwrap().validate().is_err());
+        for (title, description, url, pic_url) in [
+            ("", "描述", "https://example.com", "https://example.com/x"),
+            ("标题", "", "https://example.com", "https://example.com/x"),
+            (
+                "标题",
+                "描述",
+                "http://example.com",
+                "https://example.com/x",
+            ),
+            ("标题", "描述", "https://example.com", "invalid"),
+        ] {
+            let card = MessageCard::tuwen(TuwenContent {
+                title: title.into(),
+                description: description.into(),
+                url: url.into(),
+                pic_url: pic_url.into(),
+            });
+            assert!(card.validate().is_err());
+        }
+    }
+
+    #[test]
+    fn group_everyone_supports_text_and_markdown_without_changing_channel_mentions() {
+        for message in [
+            Sendable::from(vec![segment::group_at_all(), segment::text("通知")]),
+            Sendable::from(segment::markdown("<qqbot-at-everyone /> **通知**")),
+        ] {
+            let built = message.build().unwrap();
+            let mut request = built.request;
+            normalize_request(
+                MessageTarget::Group("g"),
+                built.channel_only_content,
+                false,
+                &mut request,
+            )
+            .unwrap();
+            for target in [MessageTarget::C2c("u"), MessageTarget::Dm("d")] {
+                assert!(normalize_request(target, false, false, &mut request.clone()).is_err());
+            }
+            normalize_request(MessageTarget::Channel("c"), false, false, &mut request).unwrap();
+        }
+        let built = Sendable::from(segment::at_all()).build().unwrap();
+        assert_eq!(built.request.content.as_deref(), Some("@everyone"));
+        assert!(
+            normalize_request(
+                MessageTarget::Group("g"),
+                built.channel_only_content,
+                false,
+                &mut built.request.clone()
+            )
+            .is_err()
+        );
+    }
 }

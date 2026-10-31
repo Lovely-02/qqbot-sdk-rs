@@ -101,6 +101,23 @@ async fn main() -> Result<()> {
 
 `create_join_approval_strategy`、`list_join_approval_strategies`、`update_join_approval_strategy`、`delete_join_approval_strategy`、`execute_join_approval_strategy` 和 `whitelist_join_approval_strategy` 的字段请以官方审批策略文档为准。
 
+`list_join_approval_strategies_page(cursor, limit)` 可分页读取，返回 `strategies` 和 `next_cursor`。`limit` 默认 20、最大 50，`next_cursor` 为空时结束。
+
+群成员、加群申请、黑名单和审批策略的部分 GET 页面把分页参数列在“请求体”中，而成员列表示例使用 URL 查询参数。SDK 保留现有 `*_page` 查询参数入口，并提供 `members_request`、`join_request_list_request`、`member_blacklist_request`、`list_join_approval_strategies_request`，可按文档的 GET JSON 请求体形式传入字段；不会擅自将两种形式混发。实际平台部署接受哪种形式，需按机器人权限和线上响应确认。
+
+```rust,no_run
+use qqbot_sdk_rs::{Bot, Result};
+use serde_json::json;
+
+async fn next_strategies(bot: &Bot) -> Result<()> {
+    let result = bot.api().groups().list_join_approval_strategies_request(
+        &json!({ "cursor": "NEXT_CURSOR", "limit": 20 }),
+    ).await?;
+    println!("下一页：{result}");
+    Ok(())
+}
+```
+
 ## 群聊富媒体 📦
 
 群聊本地图片、视频和语音使用官方分片上传。最省心的方式是直接把 `segment::image(path)` 交给 `group.send(...)`；需要复用 `file_info` 时使用 `messages().upload_media(MediaTarget::Group(...), ...)`。

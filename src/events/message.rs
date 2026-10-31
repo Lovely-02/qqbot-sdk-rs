@@ -5,8 +5,8 @@ use crate::{
     entities::{ChannelHandle, DirectHandle, GroupHandle, GuildHandle, UserHandle},
     error::{Result, SdkError},
     models::{
-        ArkData, Embed, GuildMember, Message, MessageAttachment, MessageElement, MessageExtInfo,
-        MessageReference, MessageScene, User,
+        Ark, ArkData, Embed, GuildMember, Message, MessageAttachment, MessageElement,
+        MessageExtInfo, MessageReference, MessageScene, User,
     },
     segment::Sendable,
 };
@@ -29,6 +29,8 @@ impl Event for ReadyEvent {
 /// 子频道消息的常用字段。
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MessageCreateEvent {
+    pub edited_timestamp: Option<String>,
+    pub ark: Option<Ark>,
     pub id: Option<String>,
     pub channel_id: Option<String>,
     pub guild_id: Option<String>,
@@ -130,6 +132,8 @@ impl MessageCreateEvent {
 /// 频道私信消息事件。
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DirectMessageCreate {
+    pub edited_timestamp: Option<String>,
+    pub ark: Option<Ark>,
     pub id: Option<String>,
     pub channel_id: Option<String>,
     pub guild_id: Option<String>,

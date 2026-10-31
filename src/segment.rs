@@ -1,6 +1,8 @@
 use crate::{
     error::{Result, SdkError},
-    models::{Ark, Embed, InputNotify, Keyboard, Media, MessageReference, MessageRequest},
+    models::{
+        Ark, Embed, InputNotify, Keyboard, Media, MessageCard, MessageReference, MessageRequest,
+    },
 };
 use serde_json::{Value, json};
 
@@ -24,8 +26,19 @@ pub struct MediaSegment {
 /// 可组合消息段。
 #[derive(Debug, Clone)]
 pub enum MessageSegment {
+    /// 完整原生 JSON 请求体，独立发送，不做消息字段转换或校验。
+    Raw(Value),
+    Card(MessageCard),
     Text(String),
     At(String),
+    /// 当前官方格式的用户提及；群聊请在 Markdown 中使用对应标签。
+    AtUser(String),
+    CommandEnter(String),
+    CommandInput {
+        text: String,
+        show: Option<String>,
+        reference: bool,
+    },
     Face(u32),
     Image(MediaSegment),
     Video(MediaSegment),
@@ -74,6 +87,7 @@ impl Sendable {
                 request: *request,
                 media: None,
                 channel_only_content: false,
+                raw: None,
             }),
             Self::Segments(segments) => MessageBuilder::new().build_parts(segments),
         }
@@ -123,6 +137,7 @@ impl From<&str> for Sendable {
 }
 
 pub(crate) struct BuiltMessage {
+    pub raw: Option<Value>,
     pub request: MessageRequest,
     pub media: Option<MediaSegment>,
     pub channel_only_content: bool,
@@ -145,13 +160,18 @@ impl MessageBuilder {
     /// 构建无需上传的消息请求。
     ///
     /// # Errors
-    /// 消息段包含待上传富媒体（图片、视频、音频或文件）时返回 `SdkError::InvalidInput`，需改用 `send_*` 方法。
+    /// 消息段包含待上传富媒体或 raw 请求体时返回 `SdkError::InvalidInput`，需直接通过 `send_*` 发送。
     pub fn build<I, S>(self, segments: I) -> Result<MessageRequest>
     where
         I: IntoIterator<Item = S>,
         S: Into<MessageSegment>,
     {
         let built = self.build_parts(segments.into_iter().map(Into::into))?;
+        if built.raw.is_some() {
+            return Err(SdkError::InvalidInput(
+                "raw 不能转换为 MessageRequest，请直接交给 send/reply 发送".into(),
+            ));
+        }
         if built.media.is_some() {
             return Err(SdkError::InvalidInput(
                 "图片、视频、音频或文件消息段需要通过 send_* 方法发送，以便 SDK 自动上传".into(),
@@ -164,11 +184,32 @@ impl MessageBuilder {
         mut self,
         segments: impl IntoIterator<Item = MessageSegment>,
     ) -> Result<BuiltMessage> {
-        for segment in segments {
-            self.push(segment)?;
+        let mut segments = segments.into_iter();
+        if let Some(first) = segments.next() {
+            if let MessageSegment::Raw(body) = first {
+                if segments.next().is_some() {
+                    return Err(SdkError::InvalidInput(
+                        "raw 是完整请求体，不能与其他消息段混用".into(),
+                    ));
+                }
+                if !body.is_object() {
+                    return Err(SdkError::InvalidInput("raw 必须接收 JSON 对象".into()));
+                }
+                return Ok(BuiltMessage {
+                    raw: Some(body),
+                    request: MessageRequest::default(),
+                    media: None,
+                    channel_only_content: false,
+                });
+            }
+            self.push(first)?;
+            for segment in segments {
+                self.push(segment)?;
+            }
         }
         self.finish_buttons();
         Ok(BuiltMessage {
+            raw: None,
             request: self.request,
             media: self.media,
             channel_only_content: self.channel_only_content,
@@ -177,6 +218,16 @@ impl MessageBuilder {
 
     fn push(&mut self, segment: MessageSegment) -> Result<()> {
         match segment {
+            MessageSegment::Raw(_) => {
+                return Err(SdkError::InvalidInput(
+                    "raw 是完整请求体，不能与其他消息段混用".into(),
+                ));
+            }
+            MessageSegment::Card(card) => {
+                card.validate()?;
+                self.request.card = Some(card);
+                self.request.msg_type = Some(8);
+            }
             MessageSegment::Text(text) => self.request.content_mut().push_str(&text),
             MessageSegment::At(user_id) => {
                 self.channel_only_content = true;
@@ -187,6 +238,44 @@ impl MessageBuilder {
                         .content_mut()
                         .push_str(&format!("<@!{user_id}>"));
                 }
+            }
+            MessageSegment::AtUser(user_id) => {
+                if user_id.is_empty() || user_id.contains(['"', '<', '>', '&', '\'']) {
+                    return Err(SdkError::InvalidInput(
+                        "提及用户 ID 不能为空或包含标签特殊字符".into(),
+                    ));
+                }
+                self.request
+                    .content_mut()
+                    .push_str(&format!("<qqbot-at-user id=\"{user_id}\" />"));
+            }
+            MessageSegment::CommandEnter(text) => {
+                self.set_command_markdown(
+                    &text,
+                    None,
+                    &format!(
+                        "<qqbot-cmd-enter text=\"{}\" />",
+                        urlencoding::encode(&text)
+                    ),
+                )?;
+            }
+            MessageSegment::CommandInput {
+                text,
+                show,
+                reference,
+            } => {
+                let show_attribute = show
+                    .as_ref()
+                    .map(|show| format!(" show=\"{}\"", urlencoding::encode(show)))
+                    .unwrap_or_default();
+                self.set_command_markdown(
+                    &text,
+                    show.as_deref(),
+                    &format!(
+                        "<qqbot-cmd-input text=\"{}\"{show_attribute} reference=\"{reference}\" />",
+                        urlencoding::encode(&text)
+                    ),
+                )?;
             }
             MessageSegment::Face(id) => self.push_channel_inline(&format!("<emoji:{id}>")),
             MessageSegment::Link(channel_id) => {
@@ -206,9 +295,6 @@ impl MessageBuilder {
                 }
                 self.request.msg_id = msg_id;
                 self.request.event_id = event_id;
-                if self.request.msg_id.is_some() {
-                    self.request.msg_seq.get_or_insert(1);
-                }
             }
             MessageSegment::Markdown(markdown) => {
                 self.request.markdown = Some(markdown);
@@ -266,6 +352,25 @@ impl MessageBuilder {
         self.request.msg_type = Some(2);
     }
 
+    fn set_command_markdown(&mut self, text: &str, show: Option<&str>, tag: &str) -> Result<()> {
+        if text.is_empty()
+            || text.chars().count() > 100
+            || show.is_some_and(|show| show.chars().count() > 100)
+        {
+            return Err(SdkError::InvalidInput(
+                "指令 text 必须为 1–100 字符，show 最多 100 字符".into(),
+            ));
+        }
+        if self.request.markdown.is_some() {
+            return Err(SdkError::InvalidInput(
+                "指令消息段不能覆盖已有 Markdown；组合内容请在 markdown 中写入标签".into(),
+            ));
+        }
+        self.request.markdown = Some(json!({ "content": tag }));
+        self.request.msg_type = Some(2);
+        Ok(())
+    }
+
     fn push_channel_inline(&mut self, value: &str) {
         self.channel_only_content = true;
         self.request.content_mut().push_str(value);
@@ -284,7 +389,7 @@ impl MessageRequest {
     /// 从无需上传的消息段构建请求。
     ///
     /// # Errors
-    /// 消息段包含待上传富媒体（图片、视频、音频或文件）时返回 `SdkError::InvalidInput`，需改用 `send_*` 方法。
+    /// 消息段包含待上传富媒体或 raw 请求体时返回 `SdkError::InvalidInput`，需直接通过 `send_*` 发送。
     pub fn from_segments<I, S>(segments: I) -> Result<Self>
     where
         I: IntoIterator<Item = S>,
@@ -302,12 +407,55 @@ pub fn text(value: impl Into<String>) -> MessageSegment {
     MessageSegment::Text(value.into())
 }
 
+/// 原样发送完整原生 JSON 对象，不推断类型、上传媒体或校验消息字段。
+///
+/// 必须独立发送；即使使用 reply，msg_id/event_id/msg_seq 也由调用方填写。
+pub fn raw(body: Value) -> MessageSegment {
+    MessageSegment::Raw(body)
+}
+
 pub fn at(user_id: impl Into<String>) -> MessageSegment {
     MessageSegment::At(user_id.into())
 }
 
 pub fn at_all() -> MessageSegment {
     MessageSegment::At("all".into())
+}
+
+/// 当前官方的文字子频道用户提及格式。群聊提及用户仅支持 Markdown。
+pub fn at_user(user_openid: impl Into<String>) -> MessageSegment {
+    MessageSegment::AtUser(user_openid.into())
+}
+
+/// 群聊／文字子频道 @全体成员，权限和次数由平台检查。
+pub fn at_everyone() -> MessageSegment {
+    text("<qqbot-at-everyone />")
+}
+
+/// 单聊 Markdown 回车指令，text 自动 URL 编码，最多 100 字符。
+pub fn cmd_enter(text: impl Into<String>) -> MessageSegment {
+    MessageSegment::CommandEnter(text.into())
+}
+
+/// Markdown 参数指令，text/show 自动 URL 编码，reference 控制输入框引用。
+pub fn cmd_input(text: impl Into<String>, show: Option<String>, reference: bool) -> MessageSegment {
+    MessageSegment::CommandInput {
+        text: text.into(),
+        show,
+        reference,
+    }
+}
+
+/// 群聊 @全体成员。机器人需为群管理员，每群每天仅可发送一次。
+/// Markdown 中可直接使用 `<qqbot-at-everyone />`。
+pub fn group_at_all() -> MessageSegment {
+    at_everyone()
+}
+
+/// 单聊或群聊图文卡片，接收 `TuwenContent` 或 `MessageCard`。
+/// 发送时校验标题、描述和 HTTPS 链接。
+pub fn card(value: impl Into<MessageCard>) -> MessageSegment {
+    MessageSegment::Card(value.into())
 }
 
 pub fn face(id: u32) -> MessageSegment {
@@ -428,6 +576,7 @@ pub fn embed(
         prompt: Some(prompt.into()),
         thumbnail: Some(thumbnail),
         fields: Some(fields),
+        ..Default::default()
     })
 }
 

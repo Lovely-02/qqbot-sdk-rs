@@ -7,6 +7,7 @@ use serde_json::Value;
 /// 频道消息审核结果。
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MessageAudited {
+    pub seq_in_channel: Option<String>,
     pub audit_id: Option<String>,
     pub audit_time: Option<String>,
     pub channel_id: Option<String>,

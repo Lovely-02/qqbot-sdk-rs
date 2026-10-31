@@ -69,6 +69,66 @@ impl<'a> GroupApi<'a> {
             )
             .await
     }
+
+    /// 以官方 GET 请求体形式传递成员分页字段；URL 查询形式使用 `members_page`。
+    ///
+    /// # Errors
+    /// 鉴权、HTTP、限频、序列化或平台业务失败时返回 `SdkError`。
+    pub async fn members_request(&self, group_openid: &str, body: &Value) -> Result<Value> {
+        self.client
+            .request_json(
+                Method::GET,
+                &format!("/v2/groups/{}/members", segment(group_openid)),
+                Some(body),
+            )
+            .await
+    }
+
+    /// 以官方请求体形式传递 cursor/limit；URL 查询形式使用 `join_request_list_page`。
+    ///
+    /// # Errors
+    /// 鉴权、HTTP、限频、序列化或平台业务失败时返回 `SdkError`。
+    pub async fn join_request_list_request(
+        &self,
+        group_openid: &str,
+        body: &Value,
+    ) -> Result<Value> {
+        self.client
+            .request_json(
+                Method::GET,
+                &format!("/v2/groups/{}/join_request_list", segment(group_openid)),
+                Some(body),
+            )
+            .await
+    }
+
+    /// 以官方请求体形式传递 cursor/limit；URL 查询形式使用 `member_blacklist_page`。
+    ///
+    /// # Errors
+    /// 鉴权、HTTP、限频、序列化或平台业务失败时返回 `SdkError`。
+    pub async fn member_blacklist_request(
+        &self,
+        group_openid: &str,
+        body: &Value,
+    ) -> Result<Value> {
+        self.client
+            .request_json(
+                Method::GET,
+                &format!("/v2/groups/{}/member_blacklist", segment(group_openid)),
+                Some(body),
+            )
+            .await
+    }
+
+    /// 以官方请求体形式传递 cursor/limit；URL 查询形式使用 `list_join_approval_strategies_page`。
+    ///
+    /// # Errors
+    /// 鉴权、HTTP、限频、序列化或平台业务失败时返回 `SdkError`。
+    pub async fn list_join_approval_strategies_request(&self, body: &Value) -> Result<Value> {
+        self.client
+            .request_json(Method::GET, "/v2/groups/join_approval_strategy", Some(body))
+            .await
+    }
     /// 获取单个群成员。
     ///
     /// # Errors
@@ -246,6 +306,29 @@ impl<'a> GroupApi<'a> {
     /// 请求失败、鉴权失败、响应解析失败或 QQ 平台返回业务错误时返回 `SdkError`；超出本地限频返回 `SdkError::RateLimited`。
     pub async fn list_join_approval_strategies(&self) -> Result<Value> {
         self.get_value("/v2/groups/join_approval_strategy").await
+    }
+
+    /// 分页查询审批策略，`limit` 默认 20，最大 50。
+    ///
+    /// # Errors
+    /// 鉴权、HTTP、限频、序列化或平台业务失败时返回 `SdkError`。
+    pub async fn list_join_approval_strategies_page(
+        &self,
+        cursor: Option<&str>,
+        limit: Option<u16>,
+    ) -> Result<Value> {
+        let query = optional_query([
+            ("cursor", cursor.map(str::to_owned)),
+            ("limit", limit.map(|value| value.to_string())),
+        ]);
+        self.client
+            .request_json_query(
+                Method::GET,
+                "/v2/groups/join_approval_strategy",
+                Option::<&Value>::None,
+                &query,
+            )
+            .await
     }
     /// 更新入群审批策略。
     ///

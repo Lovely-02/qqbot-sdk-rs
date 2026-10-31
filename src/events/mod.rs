@@ -7,8 +7,10 @@ pub mod guild;
 pub mod handler;
 pub mod interaction;
 pub mod message;
+pub mod notifications;
 pub mod opcode;
 pub mod payload;
+pub mod shards;
 pub mod webhook;
 pub mod websocket;
 
@@ -33,8 +35,10 @@ pub use message::{
     C2cMessageReceive, DirectMessageCreate, GroupAtMessageCreate, GroupMessageCreate,
     MessageCreateEvent, ReadyEvent,
 };
+pub use notifications::*;
 pub use opcode::OpCode;
 pub use payload::Payload;
+pub use shards::GatewayShardManager;
 pub use webhook::{CallbackValidationResponse, Webhook, WebhookVerifier};
 pub use websocket::{GatewayClient, GatewayConfig};
 /// 返回网关事件的中文名称。
@@ -89,6 +93,15 @@ pub fn event_display_name(event: &str) -> &'static str {
         "PUBLIC_MESSAGE_DELETE" => "公开消息删除",
         "READY" => "就绪",
         "RESUMED" => "恢复连接",
+        AudioOrLiveChannelMemberEnter::NAME => "进入音视频或直播子频道",
+        AudioOrLiveChannelMemberExit::NAME => "离开音视频或直播子频道",
+        OpenForumThreadCreate::NAME => "开放论坛创建主题",
+        OpenForumThreadUpdate::NAME => "开放论坛更新主题",
+        OpenForumThreadDelete::NAME => "开放论坛删除主题",
+        OpenForumPostCreate::NAME => "开放论坛创建帖子",
+        OpenForumPostDelete::NAME => "开放论坛删除帖子",
+        OpenForumReplyCreate::NAME => "开放论坛创建回复",
+        OpenForumReplyDelete::NAME => "开放论坛删除回复",
         _ => "未知事件",
     }
 }

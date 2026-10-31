@@ -59,6 +59,39 @@ async fn main() -> Result<()> {
 
 事件中未提供必要 ID 时，辅助方法会返回 `SdkError::InvalidInput`，不会构造一个指向未知目标的请求。
 
+频道通知还提供以下强类型入口（数据位于 `.data`，未知字段保留在 `.extra`）：
+
+| 类型 | 通知 |
+| --- | --- |
+| `MessageDelete` / `PublicMessageDelete` / `DirectMessageDelete` | 频道、公域和私信撤回 |
+| `MessageReactionAdd` / `MessageReactionRemove` | 表情表态 |
+| `ForumThreadCreate/Update/Delete`、`ForumPostCreate/Delete`、`ForumReplyCreate/Delete` | 私域论坛主题、帖子和回复 |
+| `ForumPublishAuditResult` | 论坛审核结果 |
+| `OpenForumThreadCreate/Update/Delete`、`OpenForumPostCreate/Delete`、`OpenForumReplyCreate/Delete` | 开放论坛通知 |
+| `AudioStart` / `AudioFinish` / `AudioOnMic` / `AudioOffMic` | 音频动作 |
+| `AudioOrLiveChannelMemberEnter` / `AudioOrLiveChannelMemberExit` | 音视频／直播成员进出 |
+
+论坛历史示例的数字 ID 会转换为字符串；标题和正文兼容字符串与富文本数组。上述通知提供数据读取，不附加回复辅助方法。成员进出及开放论坛等特殊通知仍须按平台权限配置订阅，不自动加入默认 Intents。
+
+## 自动分片与启动配额
+
+`GatewayShardManager` 获取 `/gateway/bot`，启动推荐数量的分片，并在单进程内协调 `remaining`、`reset_after` 和每五秒的 `max_concurrency`。配额和启动桶在建立连接前预约，配额耗尽时等待预约归还或重置，重置后向平台重新获取配额。取消或连接失败时尚未发送的预约会归还并唤醒等待者；已经尝试发送的 Identify 不会因响应丢失而归还配额，跨周期的旧预约也不会给新周期增加余额。只有非空 session_id 与已处理序号同时存在时才使用 Resume；READY 处理器被取消且尚无检查点时，清除不完整会话并重新 Identify，不发送 seq=null。Resume 不消耗 Identify 配额，重新 Identify 会再次排队。使用 `with_shard_count(..., Some(count))` 可覆盖推荐数量。
+
+```rust,no_run
+use std::sync::Arc;
+use qqbot_sdk_rs::{Bot, EventRouter, GatewayConfig, GatewayShardManager, Result};
+
+async fn run(bot: Arc<Bot>, router: EventRouter) -> Result<()> {
+    let config = GatewayConfig::for_bot(&bot);
+    GatewayShardManager::new(bot, router, config).await?.run().await
+}
+```
+
+普通 `GatewayClient` 在一次 `run()` 的重连过程中复用已发现地址，避免反复消耗 `/gateway` 的每分钟两次额度；再次运行时重新发现。网关握手、等待 Hello 和等待 READY／RESUMED 分别受 `ClientConfig.request_timeout` 约束，超时返回 `SdkError::Timeout`，启用自动重连时按策略重试。
+
+任一分片发生不可恢复错误时，管理器取消其余连接及事件分发任务。取消 `run()` 的 future 也会清理分发任务。同一个网关或分片管理器在运行／清理期间再次调用 `run()` 会立即返回 `SdkError::InvalidInput`，不会建立重复连接。运行守卫由分发任务共同持有，旧处理器退出后才能再次启动，避免旧任务与新会话同时修改序号。已完成的 future 本身不会额外保留守卫；若仍有正在退出的分发任务，继续按清理期处理。收到 Invalid Session 或要求重新鉴权的关闭码后，即使在排空处理器期间取消运行，下一次启动也会清除旧 session_id 与序号并使用 Identify。不可重试的网关关闭不会被清理期间的处理器错误改为重连。同一 AppID 在一个进程中应使用一个管理器；跨进程配额仍需外部协调。若平台重置时改变了最大并发数，管理器返回参数错误，需重建管理器以避免新旧启动桶重叠。
+
+
 ## Intents 订阅范围 🪪
 
 `Intents` 是官方网关订阅位掩码：

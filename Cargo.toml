@@ -36,3 +36,6 @@ urlencoding = "2.1"
 [[bin]]
 name = "qqbot-sdk-rs"
 path = "src/main.rs"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["test-util"] }

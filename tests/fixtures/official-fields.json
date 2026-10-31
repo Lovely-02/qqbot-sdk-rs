@@ -1,0 +1,1339 @@
+{
+  "checked_at": "2026-10-31",
+  "cases": [
+    {
+      "type": "Ark",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/template/model.html"
+      ],
+      "payload": {
+        "template_id": 1,
+        "kv": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "ArkData",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/c2c_message_create.html",
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_at_message_create.html",
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_message_create.html"
+      ],
+      "payload": {
+        "prompt": "sample",
+        "ark_type": "sample",
+        "ark_name": "sample",
+        "fields": {}
+      }
+    },
+    {
+      "type": "C2cMessageReceive",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/c2c_message_create.html"
+      ],
+      "payload": {
+        "id": "sample",
+        "author": {
+          "id": "sample",
+          "username": "sample",
+          "bot": true,
+          "union_openid": "sample",
+          "union_user_account": "sample",
+          "user_openid": "sample",
+          "member_openid": "sample",
+          "member_role": "sample",
+          "avatar": "sample"
+        },
+        "content": "sample",
+        "timestamp": "sample",
+        "message_type": 1,
+        "message_scene": {
+          "source": "sample",
+          "ext": [
+            "sample"
+          ]
+        },
+        "attachments": [
+          {
+            "url": "sample",
+            "filename": "sample",
+            "width": 1,
+            "height": 1,
+            "size": 1,
+            "content_type": "sample",
+            "voice_wav_url": "sample",
+            "asr_refer_text": "sample"
+          }
+        ],
+        "ark_data": {
+          "prompt": "sample",
+          "ark_type": "sample",
+          "ark_name": "sample",
+          "fields": {}
+        },
+        "msg_elements": [
+          {
+            "msg_idx": "sample",
+            "author": {
+              "id": "sample",
+              "username": "sample",
+              "bot": true,
+              "union_openid": "sample",
+              "union_user_account": "sample",
+              "user_openid": "sample",
+              "member_openid": "sample",
+              "member_role": "sample",
+              "avatar": "sample"
+            },
+            "message_type": 1,
+            "content": "sample",
+            "attachments": [
+              {
+                "url": "sample",
+                "filename": "sample",
+                "width": 1,
+                "height": 1,
+                "size": 1,
+                "content_type": "sample",
+                "voice_wav_url": "sample",
+                "asr_refer_text": "sample"
+              }
+            ],
+            "ark_data": {
+              "prompt": "sample",
+              "ark_type": "sample",
+              "ark_name": "sample",
+              "fields": {}
+            },
+            "msg_elements": [
+              {
+                "msg_idx": "sample",
+                "author": {
+                  "id": "sample",
+                  "username": "sample",
+                  "bot": true,
+                  "union_openid": "sample",
+                  "union_user_account": "sample",
+                  "user_openid": "sample",
+                  "member_openid": "sample",
+                  "member_role": "sample",
+                  "avatar": "sample"
+                },
+                "message_type": 1,
+                "content": "sample",
+                "attachments": [],
+                "ark_data": {
+                  "prompt": "sample",
+                  "ark_type": "sample",
+                  "ark_name": "sample",
+                  "fields": {}
+                },
+                "msg_elements": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "C2cMsgReceive",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/c2c_msg_receive.html"
+      ],
+      "payload": {
+        "timestamp": 1,
+        "openid": "sample"
+      }
+    },
+    {
+      "type": "C2cMsgReject",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/c2c_msg_reject.html"
+      ],
+      "payload": {
+        "timestamp": 1,
+        "openid": "sample"
+      }
+    },
+    {
+      "type": "Channel",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/channels_channel_id.get.html"
+      ],
+      "payload": {
+        "id": "sample",
+        "guild_id": "sample",
+        "name": "sample",
+        "type": 1,
+        "sub_type": 1,
+        "position": 1,
+        "parent_id": "sample",
+        "owner_id": "sample",
+        "private_type": 1,
+        "speak_permission": 1,
+        "application_id": "sample",
+        "permissions": "sample"
+      }
+    },
+    {
+      "type": "ChannelEvent",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/channel_create.html",
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/channel_delete.html",
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/channel_update.html"
+      ],
+      "payload": {
+        "id": "sample",
+        "guild_id": "sample",
+        "name": "sample",
+        "type": 1,
+        "sub_type": 1,
+        "owner_id": "sample",
+        "op_user_id": "sample"
+      }
+    },
+    {
+      "type": "Embed",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/template/model.html"
+      ],
+      "payload": {
+        "title": "sample",
+        "prompt": "sample",
+        "thumbnail": {},
+        "fields": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "FriendAdd",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/friend_add.html"
+      ],
+      "payload": {
+        "timestamp": 1,
+        "openid": "sample",
+        "scene": 1,
+        "scene_param": "sample",
+        "author": {
+          "union_openid": "sample"
+        },
+        "short_code": "sample"
+      }
+    },
+    {
+      "type": "FriendAuthor",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/friend_add.html",
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/friend_del.html"
+      ],
+      "payload": {
+        "union_openid": "sample"
+      }
+    },
+    {
+      "type": "FriendDelete",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/friend_del.html"
+      ],
+      "payload": {
+        "timestamp": 1,
+        "openid": "sample",
+        "author": {
+          "union_openid": "sample"
+        }
+      }
+    },
+    {
+      "type": "Group",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_groups_group_openid_info.get.html"
+      ],
+      "payload": {
+        "group_openid": "sample",
+        "group_name": "sample",
+        "group_finger_memo": "sample",
+        "group_class_text": "sample",
+        "group_tags": [
+          "sample"
+        ],
+        "group_member_num": 1
+      }
+    },
+    {
+      "type": "GroupAddRobot",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_add_robot.html"
+      ],
+      "payload": {
+        "timestamp": 1,
+        "group_openid": "sample",
+        "op_member_openid": "sample"
+      }
+    },
+    {
+      "type": "GroupAtMessageCreate",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_at_message_create.html"
+      ],
+      "payload": {
+        "id": "sample",
+        "author": {
+          "id": "sample",
+          "username": "sample",
+          "bot": true,
+          "union_openid": "sample",
+          "union_user_account": "sample",
+          "user_openid": "sample",
+          "member_openid": "sample",
+          "member_role": "sample",
+          "avatar": "sample"
+        },
+        "content": "sample",
+        "group_openid": "sample",
+        "timestamp": "sample",
+        "message_type": 1,
+        "message_scene": {
+          "source": "sample",
+          "ext": [
+            "sample"
+          ]
+        },
+        "attachments": [
+          {
+            "url": "sample",
+            "filename": "sample",
+            "width": 1,
+            "height": 1,
+            "size": 1,
+            "content_type": "sample",
+            "voice_wav_url": "sample",
+            "asr_refer_text": "sample"
+          }
+        ],
+        "mentions": [
+          {
+            "id": "sample",
+            "username": "sample",
+            "bot": true,
+            "union_openid": "sample",
+            "union_user_account": "sample",
+            "user_openid": "sample",
+            "member_openid": "sample",
+            "member_role": "sample",
+            "avatar": "sample"
+          }
+        ],
+        "ark_data": {
+          "prompt": "sample",
+          "ark_type": "sample",
+          "ark_name": "sample",
+          "fields": {}
+        },
+        "msg_elements": [
+          {
+            "msg_idx": "sample",
+            "author": {
+              "id": "sample",
+              "username": "sample",
+              "bot": true,
+              "union_openid": "sample",
+              "union_user_account": "sample",
+              "user_openid": "sample",
+              "member_openid": "sample",
+              "member_role": "sample",
+              "avatar": "sample"
+            },
+            "message_type": 1,
+            "content": "sample",
+            "attachments": [
+              {
+                "url": "sample",
+                "filename": "sample",
+                "width": 1,
+                "height": 1,
+                "size": 1,
+                "content_type": "sample",
+                "voice_wav_url": "sample",
+                "asr_refer_text": "sample"
+              }
+            ],
+            "ark_data": {
+              "prompt": "sample",
+              "ark_type": "sample",
+              "ark_name": "sample",
+              "fields": {}
+            },
+            "msg_elements": [
+              {
+                "msg_idx": "sample",
+                "author": {
+                  "id": "sample",
+                  "username": "sample",
+                  "bot": true,
+                  "union_openid": "sample",
+                  "union_user_account": "sample",
+                  "user_openid": "sample",
+                  "member_openid": "sample",
+                  "member_role": "sample",
+                  "avatar": "sample"
+                },
+                "message_type": 1,
+                "content": "sample",
+                "attachments": [],
+                "ark_data": {
+                  "prompt": "sample",
+                  "ark_type": "sample",
+                  "ark_name": "sample",
+                  "fields": {}
+                },
+                "msg_elements": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "GroupDelRobot",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_del_robot.html"
+      ],
+      "payload": {
+        "timestamp": 1,
+        "group_openid": "sample",
+        "op_member_openid": "sample"
+      }
+    },
+    {
+      "type": "GroupJoinRequest",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_join_request.html"
+      ],
+      "payload": {
+        "group_openid": "sample",
+        "join_request_id": "sample",
+        "risk_tips": "sample",
+        "union_openid": "sample",
+        "member_openid": "sample",
+        "username": "sample",
+        "apply_at": "sample",
+        "apply_source": "sample",
+        "invited_by": "sample",
+        "bot": true,
+        "verify_info": {
+          "method": "sample",
+          "verify_message": "sample",
+          "review_qa_list": [
+            {
+              "question": "sample",
+              "answer": "sample"
+            }
+          ]
+        },
+        "auto_approved": {
+          "strategy_id": "sample"
+        }
+      }
+    },
+    {
+      "type": "GroupMemberAdd",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_member_add.html"
+      ],
+      "payload": {
+        "timestamp": 1,
+        "group_openid": "sample",
+        "member_openid": "sample"
+      }
+    },
+    {
+      "type": "GroupMemberRemove",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_member_remove.html"
+      ],
+      "payload": {
+        "timestamp": 1,
+        "group_openid": "sample",
+        "member_openid": "sample",
+        "user_openid": "sample"
+      }
+    },
+    {
+      "type": "GroupMessageCreate",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_message_create.html"
+      ],
+      "payload": {
+        "id": "sample",
+        "author": {
+          "id": "sample",
+          "username": "sample",
+          "bot": true,
+          "union_openid": "sample",
+          "union_user_account": "sample",
+          "user_openid": "sample",
+          "member_openid": "sample",
+          "member_role": "sample",
+          "avatar": "sample"
+        },
+        "content": "sample",
+        "group_openid": "sample",
+        "timestamp": "sample",
+        "message_type": 1,
+        "message_scene": {
+          "source": "sample",
+          "ext": [
+            "sample"
+          ]
+        },
+        "attachments": [
+          {
+            "url": "sample",
+            "filename": "sample",
+            "width": 1,
+            "height": 1,
+            "size": 1,
+            "content_type": "sample",
+            "voice_wav_url": "sample",
+            "asr_refer_text": "sample"
+          }
+        ],
+        "mentions": [
+          {
+            "id": "sample",
+            "username": "sample",
+            "bot": true,
+            "union_openid": "sample",
+            "union_user_account": "sample",
+            "user_openid": "sample",
+            "member_openid": "sample",
+            "member_role": "sample",
+            "avatar": "sample"
+          }
+        ],
+        "ark_data": {
+          "prompt": "sample",
+          "ark_type": "sample",
+          "ark_name": "sample",
+          "fields": {}
+        },
+        "msg_elements": [
+          {
+            "msg_idx": "sample",
+            "author": {
+              "id": "sample",
+              "username": "sample",
+              "bot": true,
+              "union_openid": "sample",
+              "union_user_account": "sample",
+              "user_openid": "sample",
+              "member_openid": "sample",
+              "member_role": "sample",
+              "avatar": "sample"
+            },
+            "message_type": 1,
+            "content": "sample",
+            "attachments": [
+              {
+                "url": "sample",
+                "filename": "sample",
+                "width": 1,
+                "height": 1,
+                "size": 1,
+                "content_type": "sample",
+                "voice_wav_url": "sample",
+                "asr_refer_text": "sample"
+              }
+            ],
+            "ark_data": {
+              "prompt": "sample",
+              "ark_type": "sample",
+              "ark_name": "sample",
+              "fields": {}
+            },
+            "msg_elements": [
+              {
+                "msg_idx": "sample",
+                "author": {
+                  "id": "sample",
+                  "username": "sample",
+                  "bot": true,
+                  "union_openid": "sample",
+                  "union_user_account": "sample",
+                  "user_openid": "sample",
+                  "member_openid": "sample",
+                  "member_role": "sample",
+                  "avatar": "sample"
+                },
+                "message_type": 1,
+                "content": "sample",
+                "attachments": [],
+                "ark_data": {
+                  "prompt": "sample",
+                  "ark_type": "sample",
+                  "ark_name": "sample",
+                  "fields": {}
+                },
+                "msg_elements": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "GroupMessageSetting",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_msg_receive.html",
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_msg_reject.html"
+      ],
+      "payload": {
+        "timestamp": 1,
+        "group_openid": "sample",
+        "op_member_openid": "sample"
+      }
+    },
+    {
+      "type": "Guild",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/guilds_guild_id.get.html"
+      ],
+      "payload": {
+        "id": "sample",
+        "name": "sample",
+        "icon": "sample",
+        "owner_id": "sample",
+        "owner": true,
+        "member_count": 1,
+        "max_members": 1,
+        "description": "sample",
+        "joined_at": "sample"
+      }
+    },
+    {
+      "type": "GuildEvent",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/guild_create.html",
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/guild_delete.html",
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/guild_update.html"
+      ],
+      "payload": {
+        "id": "sample",
+        "name": "sample",
+        "icon": "sample",
+        "owner_id": "sample",
+        "member_count": 1,
+        "max_members": 1,
+        "description": "sample",
+        "joined_at": "sample",
+        "op_user_id": "sample"
+      }
+    },
+    {
+      "type": "GuildMember",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/openapi/member/model.html"
+      ],
+      "payload": {
+        "user": {
+          "id": "sample",
+          "username": "sample",
+          "bot": true,
+          "union_openid": "sample",
+          "union_user_account": "sample",
+          "user_openid": "sample",
+          "member_openid": "sample",
+          "member_role": "sample",
+          "avatar": "sample"
+        },
+        "nick": "sample",
+        "roles": [
+          "sample"
+        ],
+        "joined_at": "sample"
+      }
+    },
+    {
+      "type": "ImageUploadCompletion",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/material-management.html"
+      ],
+      "payload": {
+        "upload_id": "sample",
+        "md5": "sample"
+      }
+    },
+    {
+      "type": "ImageUploadPreparation",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/material-management.html"
+      ],
+      "payload": {
+        "upload_id": "sample",
+        "presigned_url": "sample",
+        "expires_in": 1
+      }
+    },
+    {
+      "type": "ImageUploadRequest",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/material-management.html"
+      ],
+      "payload": {
+        "file_name": "sample",
+        "file_size": 1,
+        "content_type": "sample",
+        "md5": "sample",
+        "sha1": "sample"
+      }
+    },
+    {
+      "type": "InteractionAuthorizeData",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/interaction_create.html"
+      ],
+      "payload": {
+        "opt_scene": "sample",
+        "scope": "sample"
+      }
+    },
+    {
+      "type": "InteractionCreate",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/interaction_create.html"
+      ],
+      "payload": {
+        "id": "sample",
+        "type": 1,
+        "scene": "sample",
+        "chat_type": 1,
+        "timestamp": "sample",
+        "guild_id": "sample",
+        "channel_id": "sample",
+        "user_openid": "sample",
+        "group_openid": "sample",
+        "group_member_openid": "sample",
+        "data": {
+          "type": 1,
+          "resolved": {
+            "button_data": "sample",
+            "button_id": "sample",
+            "user_id": "sample",
+            "feature_id": "sample",
+            "message_id": "sample",
+            "feedback_opt": "sample",
+            "checked": 1,
+            "action": "sample",
+            "message_scene": {
+              "ext": [
+                "sample"
+              ]
+            },
+            "authorize_data": {
+              "opt_scene": "sample",
+              "scope": "sample"
+            }
+          }
+        },
+        "version": 1,
+        "application_id": "sample"
+      }
+    },
+    {
+      "type": "InteractionData",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/interaction_create.html"
+      ],
+      "payload": {
+        "type": 1,
+        "resolved": {
+          "button_data": "sample",
+          "button_id": "sample",
+          "user_id": "sample",
+          "feature_id": "sample",
+          "message_id": "sample",
+          "feedback_opt": "sample",
+          "checked": 1,
+          "action": "sample",
+          "message_scene": {
+            "ext": [
+              "sample"
+            ]
+          },
+          "authorize_data": {
+            "opt_scene": "sample",
+            "scope": "sample"
+          }
+        }
+      }
+    },
+    {
+      "type": "InteractionMessageScene",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/interaction_create.html"
+      ],
+      "payload": {
+        "ext": [
+          "sample"
+        ]
+      }
+    },
+    {
+      "type": "InteractionResolved",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/interaction_create.html"
+      ],
+      "payload": {
+        "button_data": "sample",
+        "button_id": "sample",
+        "user_id": "sample",
+        "feature_id": "sample",
+        "message_id": "sample",
+        "feedback_opt": "sample",
+        "checked": 1,
+        "action": "sample",
+        "message_scene": {
+          "ext": [
+            "sample"
+          ]
+        },
+        "authorize_data": {
+          "opt_scene": "sample",
+          "scope": "sample"
+        }
+      }
+    },
+    {
+      "type": "JoinAutoApproved",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_join_request.html"
+      ],
+      "payload": {
+        "strategy_id": "sample"
+      }
+    },
+    {
+      "type": "JoinVerifyInfo",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_join_request.html"
+      ],
+      "payload": {
+        "method": "sample",
+        "verify_message": "sample",
+        "review_qa_list": [
+          {
+            "question": "sample",
+            "answer": "sample"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Keyboard",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_messages.post.html"
+      ],
+      "payload": {
+        "id": "sample",
+        "content": {}
+      }
+    },
+    {
+      "type": "MaterialImage",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/material-management.html"
+      ],
+      "payload": {
+        "image_id": "sample",
+        "url": "sample",
+        "ttl": 1,
+        "preview_url": "sample"
+      }
+    },
+    {
+      "type": "MaterialImageEntry",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/material-management.html"
+      ],
+      "payload": {
+        "image_id": "sample",
+        "url": "sample",
+        "file_name": "sample",
+        "preview_url": "sample",
+        "created_at": 1,
+        "expires_at": 1
+      }
+    },
+    {
+      "type": "MaterialImagePage",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/material-management.html"
+      ],
+      "payload": {
+        "images": [
+          {
+            "image_id": "sample",
+            "url": "sample",
+            "file_name": "sample",
+            "preview_url": "sample",
+            "created_at": 1,
+            "expires_at": 1
+          }
+        ],
+        "next_cursor": "sample",
+        "total": 1
+      }
+    },
+    {
+      "type": "Media",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_groups_group_openid_files.post.html",
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_files.post.html"
+      ],
+      "payload": {
+        "file_uuid": "sample",
+        "file_info": "sample",
+        "ttl": 1,
+        "id": "sample",
+        "raw_url": "sample"
+      }
+    },
+    {
+      "type": "MediaUploadRequest",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_groups_group_openid_files.post.html",
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_files.post.html"
+      ],
+      "payload": {
+        "file_type": 1,
+        "url": "sample",
+        "srv_send_msg": true,
+        "upload_id": "sample",
+        "file_name": "sample",
+        "file_data": "sample"
+      }
+    },
+    {
+      "type": "Message",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/template/model.html"
+      ],
+      "payload": {
+        "id": "sample",
+        "channel_id": "sample",
+        "guild_id": "sample",
+        "content": "sample",
+        "timestamp": "sample",
+        "edited_timestamp": "sample",
+        "mention_everyone": true,
+        "author": {
+          "id": "sample",
+          "username": "sample",
+          "bot": true,
+          "union_openid": "sample",
+          "union_user_account": "sample",
+          "user_openid": "sample",
+          "member_openid": "sample",
+          "member_role": "sample",
+          "avatar": "sample"
+        },
+        "attachments": [
+          {
+            "url": "sample",
+            "filename": "sample",
+            "width": 1,
+            "height": 1,
+            "size": 1,
+            "content_type": "sample",
+            "voice_wav_url": "sample",
+            "asr_refer_text": "sample"
+          }
+        ],
+        "embeds": [
+          {
+            "title": "sample",
+            "prompt": "sample",
+            "thumbnail": {},
+            "fields": [
+              {}
+            ]
+          }
+        ],
+        "mentions": [
+          {
+            "id": "sample",
+            "username": "sample",
+            "bot": true,
+            "union_openid": "sample",
+            "union_user_account": "sample",
+            "user_openid": "sample",
+            "member_openid": "sample",
+            "member_role": "sample",
+            "avatar": "sample"
+          }
+        ],
+        "member": {
+          "user": {
+            "id": "sample",
+            "username": "sample",
+            "bot": true,
+            "union_openid": "sample",
+            "union_user_account": "sample",
+            "user_openid": "sample",
+            "member_openid": "sample",
+            "member_role": "sample",
+            "avatar": "sample"
+          },
+          "nick": "sample",
+          "roles": [
+            "sample"
+          ],
+          "joined_at": "sample"
+        },
+        "ark": {
+          "template_id": 1,
+          "kv": [
+            {}
+          ]
+        },
+        "seq": 1,
+        "seq_in_channel": "sample",
+        "message_reference": {
+          "message_id": "sample",
+          "ignore_get_message_error": true
+        }
+      }
+    },
+    {
+      "type": "MessageAttachment",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/c2c_message_create.html",
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_at_message_create.html",
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_message_create.html"
+      ],
+      "payload": {
+        "url": "sample",
+        "filename": "sample",
+        "width": 1,
+        "height": 1,
+        "size": 1,
+        "content_type": "sample",
+        "voice_wav_url": "sample",
+        "asr_refer_text": "sample"
+      }
+    },
+    {
+      "type": "MessageAudited",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/template/model.html"
+      ],
+      "payload": {
+        "audit_id": "sample",
+        "message_id": "sample",
+        "guild_id": "sample",
+        "channel_id": "sample",
+        "audit_time": "sample",
+        "create_time": "sample",
+        "seq_in_channel": "sample"
+      }
+    },
+    {
+      "type": "MessageCard",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_messages.post.html"
+      ],
+      "payload": {
+        "type": "sample",
+        "content": {
+          "title": "sample",
+          "description": "sample",
+          "url": "sample",
+          "pic_url": "sample"
+        }
+      }
+    },
+    {
+      "type": "MessageElement",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/c2c_message_create.html",
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_at_message_create.html",
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_message_create.html"
+      ],
+      "payload": {
+        "msg_idx": "sample",
+        "author": {
+          "id": "sample",
+          "username": "sample",
+          "bot": true,
+          "union_openid": "sample",
+          "union_user_account": "sample",
+          "user_openid": "sample",
+          "member_openid": "sample",
+          "member_role": "sample",
+          "avatar": "sample"
+        },
+        "message_type": 1,
+        "content": "sample",
+        "attachments": [
+          {
+            "url": "sample",
+            "filename": "sample",
+            "width": 1,
+            "height": 1,
+            "size": 1,
+            "content_type": "sample",
+            "voice_wav_url": "sample",
+            "asr_refer_text": "sample"
+          }
+        ],
+        "ark_data": {
+          "prompt": "sample",
+          "ark_type": "sample",
+          "ark_name": "sample",
+          "fields": {}
+        },
+        "msg_elements": [
+          {
+            "msg_idx": "sample",
+            "author": {
+              "id": "sample",
+              "username": "sample",
+              "bot": true,
+              "union_openid": "sample",
+              "union_user_account": "sample",
+              "user_openid": "sample",
+              "member_openid": "sample",
+              "member_role": "sample",
+              "avatar": "sample"
+            },
+            "message_type": 1,
+            "content": "sample",
+            "attachments": [
+              {
+                "url": "sample",
+                "filename": "sample",
+                "width": 1,
+                "height": 1,
+                "size": 1,
+                "content_type": "sample",
+                "voice_wav_url": "sample",
+                "asr_refer_text": "sample"
+              }
+            ],
+            "ark_data": {
+              "prompt": "sample",
+              "ark_type": "sample",
+              "ark_name": "sample",
+              "fields": {}
+            },
+            "msg_elements": [
+              {
+                "msg_idx": "sample",
+                "author": {
+                  "id": "sample",
+                  "username": "sample",
+                  "bot": true,
+                  "union_openid": "sample",
+                  "union_user_account": "sample",
+                  "user_openid": "sample",
+                  "member_openid": "sample",
+                  "member_role": "sample",
+                  "avatar": "sample"
+                },
+                "message_type": 1,
+                "content": "sample",
+                "attachments": [],
+                "ark_data": {
+                  "prompt": "sample",
+                  "ark_type": "sample",
+                  "ark_name": "sample",
+                  "fields": {}
+                },
+                "msg_elements": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "MessageExtInfo",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_messages.post.html"
+      ],
+      "payload": {
+        "ref_idx": "sample"
+      }
+    },
+    {
+      "type": "MessageReference",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/template/model.html"
+      ],
+      "payload": {
+        "message_id": "sample",
+        "ignore_get_message_error": true
+      }
+    },
+    {
+      "type": "MessageRequest",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_groups_group_openid_messages.post.html",
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_messages.post.html"
+      ],
+      "payload": {
+        "msg_type": 1,
+        "content": "sample",
+        "markdown": {},
+        "keyboard": {
+          "id": "sample",
+          "content": {}
+        },
+        "msg_id": "sample",
+        "event_id": "sample",
+        "msg_seq": 1,
+        "media": {},
+        "message_reference": {
+          "message_id": "sample",
+          "ignore_get_message_error": true
+        },
+        "card": {
+          "type": "sample",
+          "content": {
+            "title": "sample",
+            "description": "sample",
+            "url": "sample",
+            "pic_url": "sample"
+          }
+        },
+        "is_wakeup": true,
+        "input_notify": {}
+      }
+    },
+    {
+      "type": "MessageScene",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/c2c_message_create.html",
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_at_message_create.html",
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_message_create.html"
+      ],
+      "payload": {
+        "source": "sample",
+        "ext": [
+          "sample"
+        ]
+      }
+    },
+    {
+      "type": "ReviewQuestion",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_join_request.html"
+      ],
+      "payload": {
+        "question": "sample",
+        "answer": "sample"
+      }
+    },
+    {
+      "type": "StreamMessageRequest",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_stream_messages.post.html"
+      ],
+      "payload": {
+        "input_mode": "sample",
+        "input_state": 1,
+        "index": 1,
+        "content_type": "sample",
+        "content_raw": "sample",
+        "event_id": "sample",
+        "msg_id": "sample",
+        "stream_msg_id": "sample",
+        "msg_seq": 1,
+        "is_wakeup": true
+      }
+    },
+    {
+      "type": "StreamMessageResponse",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_stream_messages.post.html"
+      ],
+      "payload": {
+        "id": "sample",
+        "timestamp": "sample",
+        "ext_info": {
+          "ref_idx": "sample"
+        },
+        "remain_msg_len": 1
+      }
+    },
+    {
+      "type": "SubscribeMessageStatus",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/subscribe_message_status.html"
+      ],
+      "payload": {
+        "group_openid": "sample",
+        "openid": "sample",
+        "result": [
+          {
+            "template_id": 1,
+            "custom_template_id": "sample",
+            "op": 1,
+            "subscribe_id": "sample",
+            "subscribe_ts": 1,
+            "update_ts": 1
+          }
+        ]
+      }
+    },
+    {
+      "type": "SubscribeMessageTemplateResult",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/subscribe_message_status.html"
+      ],
+      "payload": {
+        "template_id": 1,
+        "custom_template_id": "sample",
+        "op": 1,
+        "subscribe_id": "sample",
+        "subscribe_ts": 1,
+        "update_ts": 1
+      }
+    },
+    {
+      "type": "TuwenContent",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_messages.post.html"
+      ],
+      "payload": {
+        "title": "sample",
+        "description": "sample",
+        "url": "sample",
+        "pic_url": "sample"
+      }
+    },
+    {
+      "type": "User",
+      "sources": [
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/c2c_message_create.html",
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_at_message_create.html",
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_message_create.html",
+        "https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/users_me.get.html"
+      ],
+      "payload": {
+        "id": "sample",
+        "username": "sample",
+        "bot": true,
+        "union_openid": "sample",
+        "union_user_account": "sample",
+        "user_openid": "sample",
+        "member_openid": "sample",
+        "member_role": "sample",
+        "avatar": "sample"
+      }
+    }
+  ]
+}

@@ -7,7 +7,13 @@ use crate::{
 };
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{Value, json};
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+    time::Duration,
+};
 use tokio::{
     sync::{Mutex, mpsc, oneshot},
     time::{MissedTickBehavior, interval, sleep, timeout},
@@ -55,12 +61,49 @@ pub struct GatewayClient {
     router: crate::events::EventRouter,
     config: GatewayConfig,
     state: Arc<Mutex<GatewayState>>,
+    coordinator: Option<Arc<super::shards::SessionStartCoordinator>>,
+    coordinated_url: Option<String>,
+    running: Arc<Mutex<()>>,
+    session_invalidated: AtomicBool,
+}
+
+pub(super) type RunGuard = Arc<tokio::sync::OwnedMutexGuard<()>>;
+
+// 分发任务可能比 run future 活得更久，必须共同持有守卫直到清理结束。
+struct RunLease {
+    _gateway: tokio::sync::OwnedMutexGuard<()>,
+    _manager: Option<RunGuard>,
+}
+
+struct DispatcherGuard(tokio::task::AbortHandle);
+
+impl Drop for DispatcherGuard {
+    fn drop(&mut self) {
+        self.0.abort();
+    }
 }
 
 #[derive(Default)]
 struct GatewayState {
     session_id: Option<String>,
     sequence: Option<i64>,
+}
+
+impl GatewayState {
+    fn resume_session(&mut self) -> Option<(String, i64)> {
+        let resume = self
+            .session_id
+            .as_deref()
+            .filter(|id| !id.is_empty())
+            .zip(self.sequence)
+            .map(|(id, sequence)| (id.to_owned(), sequence));
+        if resume.is_none() {
+            // READY 尚未处理完时没有可恢复的检查点，不能携带 null 序号或旧序号。
+            self.session_id = None;
+            self.sequence = None;
+        }
+        resume
+    }
 }
 
 #[derive(Debug)]
@@ -76,11 +119,25 @@ enum QueuedItem {
     Barrier(oneshot::Sender<()>),
 }
 
+impl QueuedItem {
+    async fn drain(sender: &mpsc::Sender<Self>, deadline: Duration) -> bool {
+        // 队列已满时发送屏障也会阻塞，必须与等待确认共享超时。
+        timeout(deadline, async {
+            let (done_tx, done_rx) = oneshot::channel();
+            sender.send(Self::Barrier(done_tx)).await.ok()?;
+            done_rx.await.ok()
+        })
+        .await
+        .is_ok_and(|result| result.is_some())
+    }
+}
+
 impl From<SdkError> for GatewayFailure {
     fn from(error: SdkError) -> Self {
+        let retry = !matches!(error, SdkError::InvalidInput(_));
         Self {
             error,
-            retry: true,
+            retry,
             clear_session: false,
             authenticated: false,
         }
@@ -124,7 +181,8 @@ impl GatewayClient {
                     "私域 Bot 请使用 GUILD_MESSAGES 订阅频道消息".into(),
                 ));
             }
-            _ => {}
+            Some(crate::intents::GuildMode::Public | crate::intents::GuildMode::Private) | None => {
+            }
         }
         if config.shard.1 == 0 || config.shard.0 >= config.shard.1 {
             return Err(SdkError::InvalidInput(
@@ -136,22 +194,53 @@ impl GatewayClient {
             router,
             config,
             state: Arc::new(Mutex::new(GatewayState::default())),
+            coordinator: None,
+            coordinated_url: None,
+            running: Arc::default(),
+            session_invalidated: AtomicBool::new(false),
         })
+    }
+
+    pub(super) fn coordinate_starts(
+        &mut self,
+        coordinator: Arc<super::shards::SessionStartCoordinator>,
+        url: String,
+    ) {
+        self.coordinator = Some(coordinator);
+        self.coordinated_url = Some(url);
     }
 
     /// 连接网关并运行事件循环，支持重连。
     ///
     /// # Errors
-    /// 网关鉴权、协议或事件分发失败时返回 `SdkError`；启用自动重连时会持续重试，只有不可恢复的错误才返回。
+    /// 已在运行或清理时返回 `SdkError::InvalidInput`；网关鉴权、协议或事件分发失败时返回对应错误。
+    /// 启用自动重连时持续重试，只有不可恢复的错误才返回。
     pub async fn run(&self) -> Result<()> {
+        self.run_with_manager(None).await
+    }
+
+    pub(super) async fn run_with_manager(&self, manager: Option<RunGuard>) -> Result<()> {
+        let gateway = self
+            .running
+            .clone()
+            .try_lock_owned()
+            .map_err(|_| SdkError::InvalidInput("当前网关正在运行或清理中".into()))?;
+        let running = Arc::new(RunLease {
+            _gateway: gateway,
+            _manager: manager,
+        });
         let mut attempts = 0u32;
+        // 一次运行中的重连复用发现结果；再次调用 run 时允许重新发现地址。
+        let discovered_url = tokio::sync::OnceCell::new();
         loop {
-            match self.run_connection().await {
+            if self.session_invalidated.load(Ordering::Acquire) {
+                self.clear_session().await;
+                // 清理完成后才撤销标记，取消清理也不会丢失失效通知。
+                self.session_invalidated.store(false, Ordering::Release);
+            }
+            match self.run_connection(&discovered_url, &running).await {
                 Ok(()) => continue,
                 Err(failure) => {
-                    if failure.clear_session {
-                        self.clear_session().await;
-                    }
                     if !failure.retry || !self.config.auto_reconnect {
                         break Err(failure.error);
                     }
@@ -180,14 +269,20 @@ impl GatewayClient {
         state.sequence = None;
     }
 
-    async fn run_connection(&self) -> std::result::Result<(), GatewayFailure> {
+    async fn run_connection(
+        &self,
+        discovered_url: &tokio::sync::OnceCell<String>,
+        running: &Arc<RunLease>,
+    ) -> std::result::Result<(), GatewayFailure> {
         let (event_tx, mut event_rx) = mpsc::channel::<QueuedItem>(256);
         let router = self.router.clone();
         let client = self.client.clone();
         let state = self.state.clone();
         let dispatch_failure = Arc::new(Mutex::new(None::<String>));
         let dispatch_failure_for_task = dispatch_failure.clone();
+        let running = running.clone();
         let dispatcher = tokio::spawn(async move {
+            let _running = running;
             while let Some(item) = event_rx.recv().await {
                 match item {
                     QueuedItem::Event(envelope) => {
@@ -212,16 +307,21 @@ impl GatewayClient {
             }
         });
 
-        let result = self.run_connection_loop(&event_tx, &dispatch_failure).await;
-        let (done_tx, done_rx) = oneshot::channel();
-        let barrier_sent = event_tx.send(QueuedItem::Barrier(done_tx)).await.is_ok();
-        let barrier_completed = if barrier_sent {
-            timeout(Duration::from_secs(30), done_rx)
-                .await
-                .is_ok_and(|result| result.is_ok())
-        } else {
-            false
-        };
+        let _dispatcher_guard = DispatcherGuard(dispatcher.abort_handle());
+        let result = self
+            .run_connection_loop(&event_tx, &dispatch_failure, discovered_url)
+            .await;
+        if result.as_ref().is_err_and(|failure| failure.clear_session) {
+            // 必须在排空队列的第一个 await 之前保存，供取消后的下一次运行处理。
+            self.session_invalidated.store(true, Ordering::Release);
+        }
+        let barrier_completed = QueuedItem::drain(&event_tx, Duration::from_secs(30)).await;
+        if result.as_ref().is_err_and(|failure| !failure.retry) {
+            // 分发器失败不能把封禁、权限等不可恢复的协议错误改成重试。
+            dispatcher.abort();
+            let _ = dispatcher.await;
+            return result;
+        }
         if !barrier_completed {
             if let Some(error) = dispatch_failure.lock().await.clone() {
                 dispatcher.abort();
@@ -265,16 +365,36 @@ impl GatewayClient {
         &self,
         event_tx: &mpsc::Sender<QueuedItem>,
         dispatch_failure: &Arc<Mutex<Option<String>>>,
+        discovered_url: &tokio::sync::OnceCell<String>,
     ) -> std::result::Result<(), GatewayFailure> {
-        let url = self.client.gateway_url().await?;
+        let url = match &self.coordinated_url {
+            Some(url) => url.clone(),
+            None => discovered_url
+                .get_or_try_init(|| self.client.gateway_url())
+                .await?
+                .clone(),
+        };
         let trace_id = crate::client::next_span_id();
         let span_id = crate::client::next_span_id();
         let span = info_span!("gateway_connection", url = %url, trace_id, span_id);
         async move {
+            // 配额和启动桶在连接前预约，避免远端连接在漫长的配额等待中失效。
+            let resume_session = self.state.lock().await.resume_session();
+            let needs_identify = resume_session.is_none();
+            let mut start_permit = if needs_identify {
+                match &self.coordinator {
+                    Some(coordinator) => Some(coordinator.acquire(self.config.shard.0).await?),
+                    None => None,
+                }
+            } else { None };
             info!("正在连接 WebSocket 网关");
-            let (mut socket, _) = connect_async(&url)
+            let (mut socket, _) = timeout(self.client.config.request_timeout, connect_async(&url))
                 .await
+                .map_err(|_| SdkError::Timeout("WebSocket 握手".into()))?
                 .map_err(|error| SdkError::WebSocket(error.to_string()))?;
+            let mut phase_deadline = tokio::time::Instant::now().checked_add(self.client.config.request_timeout)
+                .ok_or_else(|| SdkError::InvalidInput("网关 Hello 超时时间超出范围".into()))?;
+            let mut received_hello = false;
             let mut heartbeat = interval(Duration::from_secs(3600));
             heartbeat.set_missed_tick_behavior(MissedTickBehavior::Delay);
             heartbeat.tick().await;
@@ -285,6 +405,10 @@ impl GatewayClient {
 
             loop {
                 tokio::select! {
+                    _ = tokio::time::sleep_until(phase_deadline), if !authenticated => {
+                        let phase = if received_hello { "等待网关鉴权完成" } else { "等待网关 Hello" };
+                        return Err(SdkError::Timeout(phase.into()).into());
+                    }
                     _ = heartbeat.tick(), if heartbeat_ready => {
                         if heartbeat_ack_pending {
                             return Err(GatewayFailure {
@@ -330,6 +454,10 @@ impl GatewayClient {
                         let payload: Payload<Value> = serde_json::from_str(&text)?;
                         match OpCode::from_u8(payload.op) {
                             Some(OpCode::Hello) => {
+                                if received_hello {
+                                    return Err(SdkError::WebSocket("重复收到网关 Hello".into()).into());
+                                }
+                                received_hello = true;
                                 let hello: HelloData = serde_json::from_value(payload.d)?;
                                 if hello.heartbeat_interval == 0 {
                                     return Err(GatewayFailure {
@@ -348,13 +476,9 @@ impl GatewayClient {
                                 heartbeat_ready = false;
                                 heartbeat_ack_pending = false;
 
+                                let resume = resume_session.is_some();
                                 let token = self.client.auth().token().await?;
-                                let state = self.state.lock().await;
-                                let session_id = state.session_id.clone();
-                                let sequence = state.sequence;
-                                drop(state);
-                                let resume = session_id.is_some();
-                                let auth_payload = if let Some(session_id) = session_id {
+                                let auth_payload = if let Some((session_id, sequence)) = &resume_session {
                                     json!({
                                         "op": OpCode::Resume as u8,
                                         "d": {
@@ -378,10 +502,16 @@ impl GatewayClient {
                                         }
                                     })
                                 };
+                                if let Some(permit) = start_permit.as_mut() {
+                                    permit.commit()?;
+                                }
                                 socket
                                     .send(WsMessage::Text(auth_payload.to_string().into()))
                                     .await
                                     .map_err(|error| SdkError::WebSocket(error.to_string()))?;
+                                drop(start_permit.take());
+                                phase_deadline = tokio::time::Instant::now().checked_add(self.client.config.request_timeout)
+                                    .ok_or_else(|| SdkError::InvalidInput("网关鉴权超时时间超出范围".into()))?;
                                 info!(heartbeat_interval = hello.heartbeat_interval, resume, "收到 Hello 并发送鉴权");
                             }
                             Some(OpCode::Dispatch) => {
@@ -451,7 +581,8 @@ impl GatewayClient {
                                     authenticated,
                                 });
                             }
-                            _ => debug!(opcode = payload.op, "收到未处理的网关操作码"),
+                            Some(OpCode::Identify | OpCode::Resume | OpCode::HttpCallbackAck | OpCode::CallbackVerify)
+                            | None => debug!(opcode = payload.op, "收到未处理的网关操作码"),
                         }
                     }
                     _ = event_tx.closed() => {
@@ -495,5 +626,43 @@ fn close_failure(code: Option<u16>, reason: String, authenticated: bool) -> Gate
         retry,
         clear_session,
         authenticated,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn drain_times_out_even_when_queue_is_full() {
+        let (sender, _receiver) = mpsc::channel(1);
+        let (done, _ack) = oneshot::channel();
+        sender.send(QueuedItem::Barrier(done)).await.unwrap();
+        let drained = timeout(
+            Duration::from_secs(1),
+            QueuedItem::drain(&sender, Duration::from_millis(10)),
+        )
+        .await
+        .expect("满队列的屏障发送也必须受超时约束");
+        assert!(!drained);
+    }
+
+    #[tokio::test]
+    async fn drain_waits_for_acknowledgement() {
+        let (sender, mut receiver) = mpsc::channel(1);
+        let worker = tokio::spawn(async move {
+            if let Some(QueuedItem::Barrier(done)) = receiver.recv().await {
+                done.send(()).unwrap();
+            }
+        });
+        assert!(QueuedItem::drain(&sender, Duration::from_secs(1)).await);
+        worker.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn drain_fails_if_dispatcher_is_closed() {
+        let (sender, receiver) = mpsc::channel(1);
+        drop(receiver);
+        assert!(!QueuedItem::drain(&sender, Duration::from_secs(1)).await);
     }
 }

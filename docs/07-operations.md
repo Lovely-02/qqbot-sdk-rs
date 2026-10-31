@@ -71,8 +71,9 @@ use qqbot_sdk_rs::{Bot, Result, SdkError};
 async fn send(bot: &Bot) -> Result<()> {
     match bot.user("USER_OPENID").send("你好").await {
         Ok(message) => println!("发送成功：{:?}", message.id),
-        Err(SdkError::Api { status, code, message }) => {
+        Err(SdkError::Api { status, code, message, trace_id, data }) => {
             eprintln!("官方接口失败：HTTP {status}, code {code}, {message}");
+            eprintln!("链路：{trace_id:?}，附加信息：{data:?}");
         }
         Err(error) => return Err(error),
     }
@@ -82,7 +83,9 @@ async fn send(bot: &Bot) -> Result<()> {
 
 ## 限频与重试 ⏱️
 
-`ClientConfig::mode` 固定 Bot 的公域/私域和事件接入方式；`ClientConfig::bot_qps` 控制 SDK 本地 Bot 维度主动请求频率，默认值为每秒 5 次。它不能替代 QQ 官方服务端限频；遇到官方 429 或业务错误时，仍应根据响应做退避。
+`SdkError::Api` 还保留响应体 `trace_id`（缺失时使用响应头 `X-Tps-trace-ID`）和 `data`。频道消息进入异步审核时，可从 `data.message_audit.audit_id` 关联审核事件。HTTP 200/201/202 响应中若含非零 `err_code` 或 `code`，SDK 同样返回业务错误，不会将其当作已发送的消息。只关心原有字段时可使用 `SdkError::Api { status, code, message, .. }` 匹配。
+
+`ClientConfig::mode` 固定 Bot 的公域/私域和事件接入方式；`ClientConfig::bot_qps` 控制 SDK 本地 Bot 维度主动请求频率，默认值为每秒 5 次。SDK 另外按官方已明确标注的接口、HTTP 方法施加 QPS/QPM 固定窗口限制，同一客户端的克隆共享配额，例如群信息 30 QPM、自定义菜单更新 5 QPM；超限在发请求前返回 `RateLimited`。这些本地计数不能替代服务端跨实例统计、管理员权限或自然日配额，遇到官方 429 或业务错误时仍需按响应退避。分片上传的瞬时错误按服务端配置有限重试，超出操作时间预算返回 `SdkError::Timeout`。
 
 网关 `GatewayConfig` 提供 `reconnect_delay` 和 `auto_reconnect`：
 

@@ -1,7 +1,7 @@
 use crate::{
     api::{
-        BotApi, ChannelApi, GroupApi, GuildApi, InteractionApi, MenuApi, MessageApi, PanelApi,
-        UserApi, UtilityApi,
+        BotApi, ChannelApi, GroupApi, GuildApi, InteractionApi, MaterialApi, MenuApi, MessageApi,
+        PanelApi, UserApi, UtilityApi,
     },
     auth::AccessTokenManager,
     entities::{
@@ -90,7 +90,7 @@ pub struct ClientConfig {
     pub api_base_url: String,
     /// 网关地址；为空时先调用 `/gateway`。
     pub gateway_url: Option<String>,
-    /// 单次 HTTP 请求超时。
+    /// 单次 HTTP 请求，以及网关握手、Hello 和鉴权各阶段的超时。
     pub request_timeout: Duration,
     /// 主动消息 QPS 限制。
     pub bot_qps: u32,
@@ -115,6 +115,8 @@ pub struct QQBotClient {
     pub(crate) auth: AccessTokenManager,
     pub(crate) config: Arc<ClientConfig>,
     pub(crate) limiter: RateLimiter,
+    endpoint_limits: Arc<crate::endpoint_limits::EndpointLimits>,
+    pub(crate) reply_sequences: Arc<crate::reply::ReplySequences>,
 }
 
 /// 客户端别名。
@@ -167,6 +169,8 @@ impl QQBotClient {
             auth,
             config: Arc::new(config),
             limiter,
+            endpoint_limits: Arc::default(),
+            reply_sequences: Arc::default(),
         })
     }
 
@@ -342,6 +346,7 @@ impl QQBotClient {
         T: DeserializeOwned,
     {
         self.limiter.acquire("bot").await?;
+        self.endpoint_limits.acquire(&method, path).await?;
         let token = self.auth.token().await?;
         let trace_id = next_span_id();
         let span_id = next_span_id();
@@ -374,6 +379,7 @@ impl QQBotClient {
         Q: Serialize + ?Sized,
     {
         self.limiter.acquire("bot").await?;
+        self.endpoint_limits.acquire(&method, path).await?;
         let token = self.auth.token().await?;
         let trace_id = next_span_id();
         let span_id = next_span_id();
@@ -404,6 +410,7 @@ impl QQBotClient {
         T: DeserializeOwned,
     {
         self.limiter.acquire("bot").await?;
+        self.endpoint_limits.acquire(&method, path).await?;
         let token = self.auth.token().await?;
         let trace_id = next_span_id();
         let span_id = next_span_id();
@@ -442,19 +449,27 @@ impl QQBotClient {
     /// 解析 QQ API 响应并记录错误。
     async fn decode_response<T: DeserializeOwned>(&self, response: reqwest::Response) -> Result<T> {
         let status = response.status();
+        let trace_id = response
+            .headers()
+            .get("X-Tps-trace-ID")
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_owned);
         let bytes = response.bytes().await.map_err(|error| {
             error!(target: API_ERROR_LOG_TARGET, "{error}");
             SdkError::from(error)
         })?;
         debug!(status = status.as_u16(), size = bytes.len(), "QQ API 响应");
-        if !status.is_success() {
-            let body = serde_json::from_slice::<ApiErrorBody>(&bytes).unwrap_or_default();
+        let body = serde_json::from_slice::<ApiErrorBody>(&bytes).unwrap_or_default();
+        let error_code = body.nonzero_code();
+        if !status.is_success() || error_code.is_some() {
             let error = SdkError::Api {
                 status: status.as_u16(),
-                code: body.err_code.or(body.code).unwrap_or(-1),
+                code: error_code.or(body.err_code).or(body.code).unwrap_or(-1),
                 message: body
                     .message
                     .unwrap_or_else(|| String::from_utf8_lossy(&bytes).into_owned()),
+                trace_id: body.trace_id.or(trace_id),
+                data: body.data,
             };
             error!(target: API_ERROR_LOG_TARGET, "{}", String::from_utf8_lossy(&bytes));
             return Err(error);
@@ -478,6 +493,13 @@ pub struct Api<'a> {
 }
 
 impl<'a> Api<'a> {
+    /// Markdown 图片素材管理 API。
+    pub fn materials(&self) -> MaterialApi<'a> {
+        MaterialApi {
+            client: self.client,
+        }
+    }
+
     /// 机器人自身 API。
     pub fn bot(&self) -> BotApi<'a> {
         BotApi {

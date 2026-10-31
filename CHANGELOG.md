@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- 新增 `segment::raw`，原样发送完整 JSON 对象，跳过消息字段封装、类型推断和内容校验。
+
+- 新增 Markdown 图片素材管理及完整上传流程、单聊／群聊图文卡片。
+- 图文卡片统一使用 `segment::card`，可直接接收 `TuwenContent` 或 `MessageCard`。
+- 支持新版用户／全体提及标签、Markdown 指令和频道 Markdown 键盘。
+- 补充审批策略分页、GET 分页请求体入口、流式消息类型化字段和富媒体上传字段。
+- 补充消息／审核事件字段，保留业务错误链路和异步审核数据。
+- 同步官方接口、字段覆盖清单与示例，并将手册 Rust 示例纳入编译验证。
+
 ## [0.1.2](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.1.1...qqbot-sdk-rs-v0.1.2) (2026-10-12)
 
 

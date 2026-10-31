@@ -85,6 +85,8 @@ pub struct GuildMember {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Embed {
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prompt: Option<String>,
@@ -212,6 +214,57 @@ pub struct Media {
     pub raw_url: Option<String>,
 }
 
+/// 富媒体上传请求，支持 URL、upload_id 合并或 file_data 直传。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MediaUploadRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file_type: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub srv_send_msg: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upload_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file_data: Option<String>,
+}
+
+/// 流式单聊请求；首片 index=0，后续携带上一片响应 id。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct StreamMessageRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input_mode: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input_state: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub index: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content_raw: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub event_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub msg_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stream_msg_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub msg_seq: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_wakeup: Option<bool>,
+}
+
+/// 流式响应，包含后续分片标识和剩余字符数。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct StreamMessageResponse {
+    pub id: Option<String>,
+    pub timestamp: Option<String>,
+    pub ext_info: Option<MessageExtInfo>,
+    pub remain_msg_len: Option<i64>,
+}
+
 /// 内嵌按钮键盘定义。
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Keyboard {
@@ -224,6 +277,8 @@ pub struct Keyboard {
 /// 统一消息请求结构，字段可按消息类型组合使用。
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MessageRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub card: Option<MessageCard>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
     /// 频道消息中可直接引用的图片 URL。
@@ -245,7 +300,7 @@ pub struct MessageRequest {
     pub keyboard: Option<Keyboard>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub msg_id: Option<String>,
-    /// 被动回复同一消息时使用的序号；与 `msg_id` 搭配使用。
+    /// 被动回复序号；与 `msg_id` 搭配。单聊／群聊普通发送未填写时自动分配，显式值可用于重试。
     #[serde(skip_serializing_if = "Option::is_none")]
     pub msg_seq: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -257,6 +312,62 @@ pub struct MessageRequest {
     /// 图片转存失败时是否终止 Markdown 发送。
     #[serde(skip)]
     pub force_verify_image_resource: Option<bool>,
+}
+
+/// 单聊和群聊图文卡片。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MessageCard {
+    #[serde(rename = "type")]
+    pub card_type: String,
+    pub content: TuwenContent,
+}
+
+impl MessageCard {
+    pub fn tuwen(content: TuwenContent) -> Self {
+        Self {
+            card_type: "tuwen".into(),
+            content,
+        }
+    }
+
+    pub(crate) fn validate(&self) -> crate::error::Result<()> {
+        let content = &self.content;
+        if self.card_type != "tuwen"
+            || !(1..=50).contains(&content.title.chars().count())
+            || !(1..=200).contains(&content.description.chars().count())
+        {
+            return Err(crate::error::SdkError::InvalidInput(
+                "图文卡片必须使用 tuwen，标题为 1–50 字符，描述为 1–200 字符".into(),
+            ));
+        }
+        for value in [&content.url, &content.pic_url] {
+            if value.chars().count() > 1024
+                || reqwest::Url::parse(value)
+                    .ok()
+                    .is_none_or(|url| url.scheme() != "https" || url.host_str().is_none())
+            {
+                return Err(crate::error::SdkError::InvalidInput(
+                    "图文卡片链接必须为有效 HTTPS URL，且不超过 1024 字符".into(),
+                ));
+            }
+        }
+        Ok(())
+    }
+}
+
+/// 图文卡片内容；`url` 和 `pic_url` 必须为 HTTPS 链接。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TuwenContent {
+    pub title: String,
+    pub description: String,
+    pub url: String,
+    pub pic_url: String,
+}
+
+impl From<TuwenContent> for MessageCard {
+    fn from(content: TuwenContent) -> Self {
+        Self::tuwen(content)
+    }
 }
 
 /// QQ API 返回的消息对象。
@@ -359,11 +470,21 @@ where
 /// QQ API 业务错误响应。
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ApiErrorBody {
+    pub trace_id: Option<String>,
+    pub data: Option<Value>,
     #[serde(deserialize_with = "deserialize_opt_i64", default)]
     pub code: Option<i64>,
     pub message: Option<String>,
     #[serde(deserialize_with = "deserialize_opt_i64", default)]
     pub err_code: Option<i64>,
+}
+
+impl ApiErrorBody {
+    pub(crate) fn nonzero_code(&self) -> Option<i64> {
+        self.err_code
+            .filter(|code| *code != 0)
+            .or_else(|| self.code.filter(|code| *code != 0))
+    }
 }
 
 fn deserialize_opt_i64<'de, D>(deserializer: D) -> Result<Option<i64>, D::Error>

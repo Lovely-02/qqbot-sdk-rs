@@ -14,6 +14,24 @@ use serde_json::{Value, json};
 use crate::api::segment;
 
 impl<'a> MessageApi<'a> {
+    /// 类型化富媒体上传，保留 file_name、file_data 等官方字段。
+    ///
+    /// # Errors
+    /// 鉴权、HTTP、限频、序列化或平台业务失败时返回 `SdkError`。
+    pub async fn upload_media_with(
+        &self,
+        target: MediaTarget<'_>,
+        body: &crate::models::MediaUploadRequest,
+    ) -> Result<Media> {
+        let path = match target {
+            MediaTarget::C2c(id) => format!("/v2/users/{}/files", segment(id)),
+            MediaTarget::Group(id) => format!("/v2/groups/{}/files", segment(id)),
+        };
+        self.client
+            .request_json(Method::POST, &path, Some(body))
+            .await
+    }
+
     /// 按官方分片流程上传富媒体并返回 `file_info`。
     ///
     /// # Errors
@@ -55,96 +73,81 @@ impl<'a> MessageApi<'a> {
                 target_id = segment(target_id)
             ),
         };
-        let prepare: UploadPrepareResponse = self
-            .client
-            .request_json(
-                Method::POST,
-                &prepare_path,
-                Some(&json!({
-                    "file_type": file_type,
-                    "file_size": data.len().to_string(),
-                    "file_name": file_name,
-                    "md5": md5,
-                    "sha1": sha1,
-                    "md5_10m": md5_10m,
-                })),
-            )
+        let prepare_body = json!({
+            "file_type": file_type,
+            "file_size": data.len().to_string(),
+            "file_name": file_name,
+            "md5": md5,
+            "sha1": sha1,
+            "md5_10m": md5_10m,
+        });
+        let prepare: UploadPrepareResponse = super::upload::UploadPolicy::from_config(None)?
+            .run_locally_limited(|| {
+                self.client
+                    .request_json(Method::POST, &prepare_path, Some(&prepare_body))
+            })
             .await?;
-        if prepare.parts.is_empty() {
-            return Err(SdkError::InvalidInput(
-                "官方分片上传未返回任何上传分片".into(),
-            ));
-        }
-        let data_len = u64::try_from(data.len())
-            .map_err(|_| SdkError::InvalidInput("上传文件大小超出平台可处理范围".into()))?;
-        let mut offset = 0u64;
-        for part in &prepare.parts {
-            let start = offset;
-            let end = start.saturating_add(part.block_size).min(data_len);
-            if start >= data_len || end <= start {
-                return Err(SdkError::InvalidInput(
-                    "官方分片上传返回的分片范围无效".into(),
-                ));
+        let ranges = prepare.ranges(data.len())?;
+        let policy = super::upload::UploadPolicy::from_config(prepare.upload_config.as_ref())?;
+        let finish_path = match target {
+            MediaTarget::C2c(_) => format!("/v2/users/{}/upload_part_finish", segment(target_id)),
+            MediaTarget::Group(_) => {
+                format!("/v2/groups/{}/upload_part_finish", segment(target_id))
             }
-            let start_offset = usize::try_from(start).map_err(|_| {
-                SdkError::InvalidInput("官方分片上传返回的分片偏移超出平台可处理范围".into())
-            })?;
-            let end_offset = usize::try_from(end).map_err(|_| {
-                SdkError::InvalidInput("官方分片上传返回的分片偏移超出平台可处理范围".into())
-            })?;
-            self.client
-                .http
-                .put(&part.presigned_url)
-                .body(data[start_offset..end_offset].to_vec())
-                .send()
-                .await?
-                .error_for_status()?;
-            let finish_path = match target {
-                MediaTarget::C2c(_) => format!(
-                    "/v2/users/{target_id}/upload_part_finish",
-                    target_id = segment(target_id)
-                ),
-                MediaTarget::Group(_) => format!(
-                    "/v2/groups/{target_id}/upload_part_finish",
-                    target_id = segment(target_id)
-                ),
-            };
-            let part_md5 = hex::encode(Md5::digest(&data[start_offset..end_offset]));
-            let _: Value = self
-                .client
-                .request_json(
-                    Method::POST,
-                    &finish_path,
-                    Some(&json!({
-                        "upload_id": &prepare.upload_id,
+        };
+        use futures_util::{StreamExt, TryStreamExt, stream};
+        let uploads = ranges
+            .into_iter()
+            .map(|(part, range)| {
+                let finish_path = &finish_path;
+                let upload_id = &prepare.upload_id;
+                let policy = &policy;
+                async move {
+                    let chunk = &data[range];
+                    policy
+                        .run(|| async {
+                            self.client
+                                .http
+                                .put(&part.presigned_url)
+                                .body(chunk.to_vec())
+                                .send()
+                                .await?
+                                .error_for_status()?;
+                            Ok(())
+                        })
+                        .await?;
+                    let body = json!({
+                        "upload_id": upload_id,
                         "part_index": part.index,
-                        "block_size": (end - start).to_string(),
-                        "md5": part_md5,
-                    })),
-                )
-                .await?;
-            offset = end;
-        }
-        if offset != data_len {
-            return Err(SdkError::InvalidInput(
-                "官方分片上传返回的总分片大小与文件大小不一致".into(),
-            ));
-        }
+                        "block_size": chunk.len().to_string(),
+                        "md5": hex::encode(Md5::digest(chunk)),
+                    });
+                    policy
+                        .run(|| async {
+                            self.client
+                                .request_empty(Method::POST, finish_path, Some(&body))
+                                .await
+                        })
+                        .await
+                }
+            })
+            .collect::<Vec<_>>();
+        stream::iter(uploads)
+            .buffer_unordered(policy.concurrency)
+            .try_collect::<Vec<_>>()
+            .await?;
         let path = match target {
             MediaTarget::C2c(_) => format!("/v2/users/{}/files", segment(target_id)),
             MediaTarget::Group(_) => format!("/v2/groups/{}/files", segment(target_id)),
         };
-        self.client
-            .request_json(
-                Method::POST,
-                &path,
-                Some(&json!({
-                    "file_type": file_type,
-                    "file_name": file_name,
-                    "upload_id": &prepare.upload_id,
-                    "srv_send_msg": srv_send_msg,
-                })),
-            )
+        let body = json!({
+            "file_type": file_type,
+            "file_name": file_name,
+            "upload_id": &prepare.upload_id,
+            "srv_send_msg": srv_send_msg,
+        });
+        policy
+            .run_locally_limited(|| self.client.request_json(Method::POST, &path, Some(&body)))
             .await
     }
 
@@ -207,6 +210,11 @@ impl<'a> MessageApi<'a> {
         message: impl Into<Sendable>,
     ) -> Result<Message> {
         let built = message.into().build()?;
+        if built.raw.is_some() {
+            return Err(SdkError::InvalidInput(
+                "raw 不支持 send_media，请直接发送原生请求体".into(),
+            ));
+        }
         if built.media.is_some() || built.request.media.is_some() {
             return Err(SdkError::InvalidInput(
                 "send_media 已经接收上传数据，不要再传入图片、视频、音频或富媒体消息段".into(),
@@ -234,6 +242,11 @@ impl<'a> MessageApi<'a> {
         message: impl Into<Sendable>,
     ) -> Result<Message> {
         let built = message.into().build()?;
+        if built.raw.is_some() {
+            return Err(SdkError::InvalidInput(
+                "raw 不支持 send_media_url，请直接发送原生请求体".into(),
+            ));
+        }
         if built.media.is_some() || built.request.media.is_some() {
             return Err(SdkError::InvalidInput(
                 "send_media_url 已经接收上传地址，不要再传入图片、视频、音频或富媒体消息段".into(),
@@ -251,18 +264,30 @@ impl<'a> MessageApi<'a> {
 }
 
 #[derive(Debug, Deserialize)]
-struct UploadPrepareResponse {
-    upload_id: String,
+pub struct UploadPrepareResponse {
+    pub upload_id: String,
+    #[serde(default, deserialize_with = "deserialize_u64_string")]
+    pub block_size: u64,
     #[serde(default)]
-    parts: Vec<UploadPart>,
+    pub upload_config: Option<UploadConfig>,
+    #[serde(default)]
+    pub parts: Vec<UploadPart>,
 }
 
 #[derive(Debug, Deserialize)]
-struct UploadPart {
-    index: u32,
-    presigned_url: String,
+pub struct UploadPart {
+    pub index: u32,
+    pub presigned_url: String,
     #[serde(deserialize_with = "deserialize_u64_string")]
-    block_size: u64,
+    pub block_size: u64,
+}
+
+/// 平台下发的分片上传配置；可通过 users/groups 的 upload_prepare 原始响应获取。
+#[derive(Debug, Deserialize)]
+pub struct UploadConfig {
+    pub concurrency: Option<u32>,
+    pub retry_timeout: Option<u32>,
+    pub retry_delay: Option<u32>,
 }
 
 fn deserialize_u64_string<'de, D>(deserializer: D) -> std::result::Result<u64, D::Error>
@@ -285,5 +310,33 @@ fn media_extension(file_type: u8) -> &'static str {
         2 => "mp4",
         3 => "silk",
         _ => "bin",
+    }
+}
+
+impl UploadPrepareResponse {
+    fn ranges(&self, data_len: usize) -> Result<Vec<(&UploadPart, std::ops::Range<usize>)>> {
+        let mut parts = self.parts.iter().collect::<Vec<_>>();
+        parts.sort_unstable_by_key(|part| part.index);
+        let mut offset = 0usize;
+        let mut ranges = Vec::with_capacity(parts.len());
+        for (index, part) in parts.into_iter().enumerate() {
+            if usize::try_from(part.index).ok() != Some(index)
+                || part.block_size == 0
+                || offset >= data_len
+            {
+                return Err(SdkError::InvalidInput("预上传分片序号或大小无效".into()));
+            }
+            let size = usize::try_from(part.block_size)
+                .map_err(|_| SdkError::InvalidInput("分片大小超出可表示范围".into()))?;
+            let end = offset.saturating_add(size).min(data_len);
+            ranges.push((part, offset..end));
+            offset = end;
+        }
+        if ranges.is_empty() || offset != data_len {
+            return Err(SdkError::InvalidInput(
+                "预上传分片总大小与文件大小不匹配".into(),
+            ));
+        }
+        Ok(ranges)
     }
 }

@@ -19,6 +19,10 @@
 
 ## 三分钟认识 SDK 🍬
 
+2026 年 10 月新增能力见 [09 素材与卡片](09-materials-and-cards.md)，完整接口核对清单见 [10 官方接口覆盖表](10-api-coverage.md)，字段与验证记录见 [11 字段覆盖与验证](11-field-coverage.md)。
+
+本次官方文档复核的范围、回复去重注意事项及高层封装缺口见 [12 官方文档复核](12-official-recheck.md)。
+
 ```rust,no_run
 use qqbot_sdk_rs::{segment, Bot, Result};
 

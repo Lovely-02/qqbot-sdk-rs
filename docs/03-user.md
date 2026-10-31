@@ -100,26 +100,36 @@ SDK 会计算官方要求的 MD5、SHA-1 和前 10 MB 校验值，并逐片完�
 
 ## 流式消息 🌊
 
-`users().send_stream_message` 对应官方流式消息接口，适合把长回答拆成多个片段。请求体字段由官方文档定义，因此 SDK 保留为 `serde_json::Value`：
+`users().send_stream` 提供类型化流式接口；`send_stream_message` 保留 `serde_json::Value` 原始入口。首片 `index=0`，后续携带上一片返回的 `id` 作为 `stream_msg_id`，结束片使用 `input_state=10`：
 
 ```rust,no_run
-use qqbot_sdk_rs::{Bot, Result};
-use serde_json::json;
+use qqbot_sdk_rs::{Bot, Result, StreamMessageRequest};
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
-    let body = json!({
-        "msg_type": 0,
-        "content": "正在整理答案……",
-        "stream": true
-    });
-    bot.api().users().send_stream_message("USER_OPENID", &body).await?;
+    let mut body = StreamMessageRequest {
+        input_mode: Some("append".into()),
+        input_state: Some(1),
+        index: Some(0),
+        content_type: Some("markdown".into()),
+        content_raw: Some("正在整理答案……".into()),
+        msg_id: Some("MSG_ID".into()),
+        msg_seq: Some(1),
+        ..Default::default()
+    };
+    let first = bot.api().users().send_stream("USER_OPENID", &body).await?;
+    body.stream_msg_id = Some(first.id.ok_or_else(|| qqbot_sdk_rs::SdkError::InvalidInput("流式首片响应缺少 id".into()))?);
+    body.index = Some(1);
+    body.input_state = Some(10);
+    body.content_raw = Some("\n\n答案整理完成。".into());
+    let end = bot.api().users().send_stream("USER_OPENID", &body).await?;
+    println!("剩余字符额度：{:?}", end.remain_msg_len);
     Ok(())
 }
 ```
 
-流式消息是否可用、字段组合和主动消息权限，以当前官方单聊文档为准。
+`input_mode=append` 追加增量正文；`replace` 发送当前全量正文，已下发的前缀不可修改。`content_type` 支持 `text` 和 `markdown`，不使用普通消息的 `msg_type/content/stream` 字段。`event_id` 与 `msg_id` 二选一，也可使用 `is_wakeup` 申请召回能力；具体权限和字段规则见 [官方流式消息接口](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_stream_messages.post.html)。
 
 ## 官方资料 📚
 

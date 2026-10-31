@@ -18,6 +18,25 @@ struct CachedToken {
     expires_at: Instant,
 }
 
+impl CachedToken {
+    fn new(value: String, expires_in: u64, requested_at: Instant) -> Result<Self> {
+        if expires_in == 0 {
+            return Err(SdkError::Auth("AccessToken 有效期必须大于 0".into()));
+        }
+        let lifetime = Duration::from_secs(expires_in);
+        let refresh_margin = Duration::from_secs(60).min(lifetime / 2);
+        let expires_at = requested_at
+            .checked_add(lifetime - refresh_margin)
+            .ok_or_else(|| SdkError::Auth("AccessToken 有效期超出可表示范围".into()))?;
+        if expires_at <= Instant::now() {
+            return Err(SdkError::Auth(
+                "AccessToken 在请求期间已到达刷新时间".into(),
+            ));
+        }
+        Ok(Self { value, expires_at })
+    }
+}
+
 /// 管理 AccessToken，并自动缓存刷新。
 #[derive(Clone)]
 pub struct AccessTokenManager {
@@ -53,7 +72,7 @@ impl AccessTokenManager {
     /// 获取有效的 AccessToken。
     ///
     /// # Errors
-    /// 请求 AccessToken 失败、HTTP 错误、响应解析失败或返回空 Token 时返回 `SdkError`。
+    /// 请求失败、响应解析失败、Token 为空、有效期无效或已到刷新时间时返回 `SdkError`。
     pub async fn token(&self) -> Result<String> {
         {
             let cached = self.cached.lock().await;
@@ -78,6 +97,8 @@ impl AccessTokenManager {
             self.base_url.trim_end_matches('/')
         );
         debug!(%url, "刷新 QQ AccessToken");
+        // 从请求开始计时，避免网络耗时延长本地缓存的有效期。
+        let requested_at = Instant::now();
         let response = match self
             .http
             .post(url)
@@ -95,18 +116,26 @@ impl AccessTokenManager {
             }
         };
         let status = response.status();
+        let trace_id = response
+            .headers()
+            .get("X-Tps-trace-ID")
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_owned);
         let bytes = response.bytes().await.map_err(|error| {
             error!(target: API_ERROR_LOG_TARGET, "{error}");
             SdkError::from(error)
         })?;
-        if !status.is_success() {
-            let body = serde_json::from_slice::<ApiErrorBody>(&bytes).unwrap_or_default();
+        let body = serde_json::from_slice::<ApiErrorBody>(&bytes).unwrap_or_default();
+        let error_code = body.nonzero_code();
+        if !status.is_success() || error_code.is_some() {
             let error = SdkError::Api {
                 status: status.as_u16(),
-                code: body.err_code.or(body.code).unwrap_or(-1),
+                code: error_code.or(body.err_code).or(body.code).unwrap_or(-1),
                 message: body
                     .message
                     .unwrap_or_else(|| String::from_utf8_lossy(&bytes).into_owned()),
+                trace_id: body.trace_id.or(trace_id),
+                data: body.data,
             };
             error!(target: API_ERROR_LOG_TARGET, "{}", String::from_utf8_lossy(&bytes));
             return Err(error);
@@ -118,17 +147,47 @@ impl AccessTokenManager {
         if token.access_token.is_empty() {
             return Err(SdkError::Auth("AccessToken 响应为空".into()));
         }
-        let lifetime = Duration::from_secs(token.expires_in.max(60));
-        let refresh_margin = Duration::from_secs(60).min(lifetime / 2);
-        *cached = Some(CachedToken {
-            value: token.access_token.clone(),
-            expires_at: Instant::now() + lifetime - refresh_margin,
-        });
+        *cached = Some(CachedToken::new(
+            token.access_token.clone(),
+            token.expires_in,
+            requested_at,
+        )?);
         Ok(token.access_token)
     }
 
     /// 清除 Token 缓存。
     pub async fn invalidate(&self) {
         *self.cached.lock().await = None;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cache_deadline_respects_short_and_normal_lifetimes() {
+        let started = Instant::now();
+        for (seconds, cached_for) in [
+            (1, Duration::from_millis(500)),
+            (7200, Duration::from_secs(7140)),
+        ] {
+            let token = CachedToken::new("token".into(), seconds, started).unwrap();
+            assert_eq!(token.expires_at.duration_since(started), cached_for);
+        }
+    }
+
+    #[test]
+    fn invalid_or_elapsed_lifetimes_return_auth_errors() {
+        for (seconds, started) in [
+            (0, Instant::now()),
+            (u64::MAX, Instant::now()),
+            (1, Instant::now() - Duration::from_secs(2)),
+        ] {
+            assert!(matches!(
+                CachedToken::new("token".into(), seconds, started),
+                Err(SdkError::Auth(_))
+            ));
+        }
     }
 }

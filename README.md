@@ -180,6 +180,12 @@ cargo build --release --bin qqbot-sdk-rs
 
 ## 文档地图
 
+需要直接发送原生请求字段时，可使用 `send(segment::raw(serde_json::json!({ "msg_type": 0, "content": "原生消息" })))`；完整行为与示例见 [消息手册](docs/02-messages.md)。
+
+已补充 2026 年 10 月新增能力：`api().materials()` 图片素材管理、`segment::card(...)` 图文卡片（单聊／群聊）和 `segment::group_at_all()` 群聊全体通知。完整示例见 [素材与卡片](docs/09-materials-and-cards.md)，接口核对见 [覆盖表](docs/10-api-coverage.md)。
+
+全面复查记录见 [字段覆盖与验证](docs/11-field-coverage.md)：核对 100 个服务端接口组合，为 55 个类型化结构记录字段契约，并将手册 Rust 示例纳入编译测试。流式消息提供 `users().send_stream(...)` 类型化入口，新版提及与指令使用 `segment::at_everyone/at_user/cmd_enter/cmd_input`。可运行示例位于 `examples/materials.rs` 和 `examples/stream.rs`，所需环境变量见文件开头。
+
 - [开发文档总览](docs/DEVELOPMENT.md)：先看这里，按主题跳转到对应小册子。
 - [01 起步与鉴权](docs/01-getting-started.md)：安装、客户端、AccessToken 和 ID。
 - [02 消息与 Segment](docs/02-messages.md)：消息段、引用、键盘、富媒体和能力限制。
@@ -189,6 +195,9 @@ cargo build --release --bin qqbot-sdk-rs
 - [06 事件与网关](docs/06-events.md)：强类型事件、`event.reply`、WebSocket 和 Webhook。
 - [07 工程与排错](docs/07-operations.md)：日志、错误、限频、安全和发布检查。
 - [08 Bot 工具箱](docs/08-bot-tools.md)：Bot 信息、面板、菜单、互动回调和跳转链接。
+- [09 素材与卡片](docs/09-materials-and-cards.md)：图片素材上传、分页、删除、图文卡片与群聊全体通知。
+- [10 官方接口覆盖表](docs/10-api-coverage.md)：本次对照官方文档的接口清单与实现位置。
+- [11 字段覆盖与验证](docs/11-field-coverage.md)：字段契约、嵌套对象、官方页面差异和验证范围。
 
 ## 许可证 📜
 

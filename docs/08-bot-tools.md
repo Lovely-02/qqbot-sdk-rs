@@ -91,7 +91,7 @@ async fn update_menu(bot: &Bot) -> Result<()> {
 | 接口                                           | 作用                     |
 | ---------------------------------------------- | ------------------------ |
 | `interactions().respond(interaction_id, body)` | 响应按钮、菜单或命令互动 |
-| `utility().generate_url_link(body)`            | 生成官方 QQ 跳转链接     |
+| `utility().generate_url_link(body)`            | 生成机器人好友分享链接 |
 
 ```rust,no_run
 use qqbot_sdk_rs::{Bot, Result};
@@ -100,19 +100,21 @@ use serde_json::json;
 async fn tools(bot: &Bot) -> Result<()> {
     bot.api()
         .interactions()
-        .respond("INTERACTION_ID", &json!({ "type": 7 }))
+        .respond("INTERACTION_ID", &json!({ "code": 0 }))
         .await?;
 
     let link = bot.api()
         .utility()
-        .generate_url_link(&json!({ "message_id": "MESSAGE_ID" }))
+        .generate_url_link(&json!({ "callback_data": "from_campaign" }))
         .await?;
-    println!("跳转链接响应：{link}");
+    println!("好友分享链接：{}", link["data"]["url"]);
     Ok(())
 }
 ```
 
-互动响应通常有时效要求，收到 `InteractionCreate` 后应尽快处理。请求中的响应类型、数据结构和可生成链接的目标由官方权限决定。
+互动响应通常有时效要求，收到 `InteractionCreate` 后应尽快处理。同一互动 ID 只能回应一次，成功使用 `code=0`。
+
+分享链接用于邀请用户添加机器人为好友；`callback_data` 最长 32 字符，添加好友时透传给后台，返回链接位于 `data.url`。详见 [官方分享链接接口](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_generate_url_link.post.html)。
 
 ## 官方资料 📚
 

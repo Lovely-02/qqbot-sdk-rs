@@ -15,6 +15,10 @@ pub enum SdkError {
         status: u16,
         code: i64,
         message: String,
+        /// 平台返回的链路 ID；优先使用响应体，否则取 X-Tps-trace-ID。
+        trace_id: Option<String>,
+        /// 原始业务附加信息，例如异步消息审核的 data.message_audit.audit_id。
+        data: Option<serde_json::Value>,
     },
     /// 鉴权失败或 Token 不可用。
     #[error("鉴权失败: {0}")]
@@ -34,6 +38,9 @@ pub enum SdkError {
     /// 日志初始化失败。
     #[error("日志初始化失败: {0}")]
     Logging(String),
+    /// 调度的操作超出时间预算。
+    #[error("操作超时: {0}")]
+    Timeout(String),
 }
 
 /// SDK 公开方法使用的结果别名。
