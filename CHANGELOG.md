@@ -11,6 +11,18 @@
 - 补充消息／审核事件字段，保留业务错误链路和异步审核数据。
 - 同步官方接口、字段覆盖清单与示例，并将手册 Rust 示例纳入编译验证。
 
+## [0.2.0](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.1.2...qqbot-sdk-rs-v0.2.0) (2026-10-31)
+
+
+### ✨ 新功能
+
+* 补全官方接口，统一 card 并新增 raw 消息入口 ([96d7ecf](https://github.com/Lovely-02/qqbot-sdk-rs/commit/96d7ecf682e4d9d004bdfc62415235bff1d3281f))
+
+
+### 📝 文档
+
+* 更新文档 ([1a3790a](https://github.com/Lovely-02/qqbot-sdk-rs/commit/1a3790a127cc2cf81f26e879766fbc47306ee188))
+
 ## [0.1.2](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.1.1...qqbot-sdk-rs-v0.1.2) (2026-10-12)
 
 
