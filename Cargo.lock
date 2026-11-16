@@ -938,7 +938,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "qqbot-sdk-node"
+name = "qqbot-sdk-js"
 version = "0.2.1"
 dependencies = [
  "napi",

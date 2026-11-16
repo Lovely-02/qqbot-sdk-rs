@@ -34,7 +34,7 @@
         {
           "type": "toml",
           "path": "Cargo.lock",
-          "jsonpath": "$.package[?(@.name.value == 'qqbot-sdk-core' || @.name.value == 'qqbot-sdk-rs' || @.name.value == 'qqbot-sdk-node')].version"
+          "jsonpath": "$.package[?(@.name.value == 'qqbot-sdk-core' || @.name.value == 'qqbot-sdk-rs' || @.name.value == 'qqbot-sdk-js')].version"
         },
         {
           "type": "json",
