@@ -1,0 +1,54 @@
+{
+  "name": "qqbot-sdk-rs-node",
+  "version": "0.2.1",
+  "description": "Node.js native bindings for qqbot-sdk-rs",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "native.js",
+    "native.d.ts",
+    "*.node",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "PUBLISHING.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsx scripts/build.ts",
+    "build:debug": "tsx scripts/build.ts --debug",
+    "build:ts": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.check.json",
+    "prepack": "npm run build:ts && tsx scripts/check-package.ts",
+    "check:release": "tsx scripts/check-package.ts --all",
+    "check:versions": "tsx scripts/check-versions.ts",
+    "example": "tsx examples/echo.ts"
+  },
+  "napi": {
+    "binaryName": "qqbot-sdk",
+    "npmClient": "npm"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^3.10.12",
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lovely-02/qqbot-sdk-rs.git",
+    "directory": "packages/npm"
+  },
+  "homepage": "https://github.com/Lovely-02/qqbot-sdk-rs/tree/main/packages/npm#readme",
+  "bugs": {
+    "url": "https://github.com/Lovely-02/qqbot-sdk-rs/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  }
+}

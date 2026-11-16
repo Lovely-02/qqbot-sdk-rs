@@ -1,38 +1,4 @@
-[package]
-name = "qqbot-sdk-rs"
-version = "0.2.1"
-edition = "2024"
-rust-version = "1.88"
-description = "轻巧、异步的 QQ 官方机器人 SDK：鉴权、消息、事件、群与频道管理"
-license = "MIT"
-repository = "https://github.com/Lovely-02/qqbot-sdk-rs"
-homepage = "https://github.com/Lovely-02/qqbot-sdk-rs"
-documentation = "https://docs.rs/qqbot-sdk-rs"
-readme = "README.md"
-keywords = ["qq", "qqbot", "bot", "sdk", "async"]
-categories = ["api-bindings", "asynchronous", "web-programming::websocket"]
-exclude = [".github/"]
-
-[dependencies]
-async-trait = "0.1"
-base64 = "0.22"
-ed25519-dalek = "2"
-futures-util = "0.3"
-hex = "0.4"
-md-5 = "0.10"
-reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "rustls-tls"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-sha1 = "0.10"
-thiserror = "2"
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
-tokio-tungstenite = { version = "0.26", features = ["rustls-tls-native-roots"] }
-tracing = "0.1"
-tracing-appender = "0.2"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json", "ansi", "time"] }
-time = { version = "0.3", features = ["formatting", "macros"] }
-urlencoding = "2.1"
-
-[[bin]]
-name = "qqbot-sdk-rs"
-path = "src/main.rs"
+[workspace]
+members = ["packages/core", "packages/rust", "packages/npm"]
+default-members = ["packages/rust"]
+resolver = "3"

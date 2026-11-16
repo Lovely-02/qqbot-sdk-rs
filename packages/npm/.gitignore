@@ -1,0 +1,7 @@
+/target
+/node_modules
+/*.node
+/native.js
+/native.d.ts
+/*.tgz
+/dist

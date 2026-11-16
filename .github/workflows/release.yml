@@ -1,32 +1,50 @@
-name: Release
+name: 🚀 统一发布
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
   workflow_dispatch:
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: true
+    inputs:
+      tag:
+        description: '🏷️ 重试已有的 qqbot-sdk-rs-vX.Y.Z 标签；留空则运行 Release Please'
+        required: false
+        type: string
+      target:
+        description: '🎯 指定标签后选择需要重试的包仓库'
+        required: true
+        default: both
+        type: choice
+        options: [both, rust, npm]
+      skip-core:
+        description: '⏭️ 重试时跳过已经发布成功的 core crate'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
-  contents: write
-  pull-requests: write
-  issues: write
+  contents: read
 
-env:
-  CARGO_TERM_COLOR: always
+concurrency:
+  group: release-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
 
 jobs:
   release:
+    name: 📝 准备统一版本
+    needs: check
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
+      tag_name: ${{ steps.release.outputs.tag_name || inputs.tag }}
     steps:
-      - name: 🧪 触发 release-please 发布检查
+      - name: 📝 创建统一版本 PR 与发布记录
+        if: inputs.tag == ''
         uses: googleapis/release-please-action@v4
         id: release
         with:
@@ -34,43 +52,178 @@ jobs:
           manifest-file: .release-please-manifest.json
 
   check:
-    if: "!startsWith(github.head_ref, 'release')"
+    name: 🔍 检查构建与版本
     runs-on: ubuntu-latest
     steps:
-      - name: 检出代码
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: 📂 检出源码
+        uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
-          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
-
-      - name: 设置 rust
-        uses: puniyu/setup-rust@9c9edfa6689a9c0e20ddea70bff5adaf5b946f28 # main
+          ref: ${{ inputs.tag || github.sha }}
+      - name: ⚙️ 配置 Node.js 环境
+        uses: actions/setup-node@v5
         with:
-          cache: true
-          prefix-key: 'qqbot-sdk-rs'
-
-      - name: 编译检查
-        run: cargo check --all-targets
+          node-version: 24
+      - name: 📚 安装 npm 依赖
+        run: npm ci --prefix packages/npm --registry=https://registry.npmjs.org
+      - name: 🔢 检查统一版本
+        run: npm run check:versions --prefix packages/npm
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+      - name: 🦀 配置 Rust 工具链
+        run: |
+          rustup update stable --no-self-update
+          rustup default stable
+      - name: 🔧 检查 Rust workspace 编译
+        run: cargo check --workspace --all-targets --locked
 
   publish:
-    runs-on: ubuntu-latest
+    name: 🦀 发布 Cargo 包
     needs: [check, release]
-    if: needs.release.outputs.release_created == 'true'
+    if: >-
+      github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
+      (needs.release.outputs.release_created == 'true' ||
+       (inputs.tag != '' && inputs.target != 'npm'))
+    runs-on: ubuntu-latest
     steps:
-      - name: 检出代码
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: 📂 检出源码
+        uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
-          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
-
-      - name: 设置 rust
-        uses: puniyu/setup-rust@9c9edfa6689a9c0e20ddea70bff5adaf5b946f28 # main
+          ref: ${{ needs.release.outputs.tag_name }}
+      - name: ⚙️ 配置 Node.js 环境
+        uses: actions/setup-node@v5
         with:
-          cache: true
-          prefix-key: 'qqbot-sdk-rs'
-
-      - name: 发布
+          node-version: 24
+      - name: 📚 安装 npm 依赖
+        run: npm ci --prefix packages/npm --registry=https://registry.npmjs.org
+      - name: 🔢 校验发布版本与标签
+        run: npm run check:versions --prefix packages/npm
+        env:
+          RELEASE_TAG: ${{ needs.release.outputs.tag_name }}
+      - name: 🦀 配置 Rust 工具链
         run: |
-          cargo publish
+          rustup update stable --no-self-update
+          rustup default stable
+      - name: 📤 发布共享核心 crate
+        if: inputs.tag == '' || inputs.skip-core != true
+        run: cargo publish -p qqbot-sdk-core --locked
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_API_TOKEN }}
+      - name: 📤 发布 Rust SDK crate
+        run: cargo publish -p qqbot-sdk-rs --locked
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_API_TOKEN }}
+
+  npm-build:
+    name: 🛠️ 构建 npm 包（${{ matrix.target }}）
+    needs: release
+    if: >-
+      always() && !cancelled() &&
+      (github.event_name == 'pull_request' ||
+       (needs.release.result == 'success' &&
+        (needs.release.outputs.release_created == 'true' || (inputs.tag != '' && inputs.target != 'rust'))))
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+          - os: macos-15
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: packages/npm
+    steps:
+      - name: 📂 检出源码
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.release.outputs.tag_name || github.sha }}
+      - name: ⚙️ 配置 Node.js 环境
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: packages/npm/package-lock.json
+      - name: 🦀 配置 Rust 工具链
+        run: |
+          rustup update stable --no-self-update
+          rustup default stable
+          rustup target add ${{ matrix.target }}
+      - name: 📚 安装 npm 依赖
+        run: npm ci --registry=https://registry.npmjs.org
+      - name: 🛠️ 构建 npm 原生模块
+        run: npm run build -- --target ${{ matrix.target }} -- --locked
+      - name: 🔢 检查统一版本
+        run: npm run check:versions
+      - name: 🔍 检查 TypeScript 类型
+        run: npm run typecheck
+      - name: 🔍 检查 npm 包内容
+        run: npm pack --dry-run
+      - name: 📤 上传多平台构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.target }}
+          path: |
+            packages/npm/*.node
+            packages/npm/native.js
+            packages/npm/native.d.ts
+          if-no-files-found: error
+
+  npm-publish:
+    name: 📦 发布 npm 包
+    needs: [check, release, npm-build]
+    if: >-
+      github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
+      needs['npm-build'].result == 'success' &&
+      (needs.release.outputs.release_created == 'true' || (inputs.tag != '' && inputs.target != 'rust'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: packages/npm
+    steps:
+      - name: 📂 检出源码
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.release.outputs.tag_name }}
+      - name: ⚙️ 配置 Node.js 环境
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: 🔐 配置 npm 信任发布工具
+        run: npm install --global npm@11 --registry=https://registry.npmjs.org
+      - name: 📚 安装 npm 依赖
+        run: npm ci --registry=https://registry.npmjs.org
+      - name: 📥 汇总多平台构建产物
+        uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          merge-multiple: true
+          path: packages/npm
+      - name: 🛠️ 编译 TypeScript 与类型声明
+        run: npm run build:ts
+      - name: ✅ 校验多平台产物与发布版本
+        run: |
+          npm run check:versions
+          npm run check:release
+        env:
+          RELEASE_TAG: ${{ needs.release.outputs.tag_name }}
+      - name: 📦 打包 npm 发行包
+        run: npm pack
+      - name: 💾 保存 npm 包构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: packages/npm/*.tgz
+          if-no-files-found: error
+      - name: 📤 发布 npm 包
+        run: npm publish ./*.tgz --provenance --access public

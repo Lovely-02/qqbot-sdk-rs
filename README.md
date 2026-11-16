@@ -21,7 +21,31 @@
 
 消息字段、路径和能力限制以 [QQ 机器人官方开发文档](https://bot.q.qq.com/wiki/develop/api-v2/) 为准，具体行为以当前官方接口为准。
 
+## 仓库结构
+
+```text
+packages/
+  core/  # 共享 Rust SDK 实现：qqbot-sdk-core
+  rust/  # Rust 公开入口、CLI 与示例：qqbot-sdk-rs
+  npm/   # TypeScript 封装与 napi-rs 绑定：qqbot-sdk-rs-node
+```
+
+根目录为 Cargo workspace，共用 `Cargo.lock`。`VERSION` 管理统一版本。Rust 和 npm 都调用 core。
+
+```powershell
+cargo check --workspace --all-targets --locked
+npm ci --prefix packages/npm
+npm run build --prefix packages/npm
+npm run typecheck --prefix packages/npm
+```
+
 ## 安装
+
+### Node.js
+
+仓库提供基于 napi-rs 的 Node.js 原生绑定，支持消息发送、WebSocket 事件和自动回复。构建步骤、TypeScript 示例与类型说明见 [Node.js 使用文档](packages/npm/README.md)。当前需要从源码构建，尚未发布 npm 包。
+
+### Rust
 
 在你的 `Cargo.toml` 中添加：
 
@@ -125,7 +149,7 @@ SDK 的业务事件使用单行日志，方便在运行时直接查看会话、�
 
 调用 QQ 官方 API 失败时会输出 `ERROR`，内容直接使用官方响应体，不会重新拼接错误文案，也不会输出 AccessToken、AppSecret 或请求体。
 
-调试时设置 `RUST_LOG=info,qqbot_sdk_rs=debug`，还会输出 WebSocket 和 Webhook 收到的 QQ 官方原始 JSON。这里输出的是官方实际推送内容，不是 SDK 重新拼接的日志文本；JSON 可能包含隐私数据，生产环境请谨慎开启。
+调试时设置 `RUST_LOG=info,qqbot_sdk_core=debug`，还会输出 WebSocket 和 Webhook 收到的 QQ 官方原始 JSON。这里输出的是官方实际推送内容，不是 SDK 重新拼接的日志文本；JSON 可能包含隐私数据，生产环境请谨慎开启。
 
 ## 消息类型速记
 
@@ -161,7 +185,7 @@ fn init_log() -> Result<qqbot_sdk_rs::WorkerGuard> {
     SakuraLogger::builder()
         .with_format(LogFormat::Pretty)
         .with_target(LogTarget::Stdout)
-        .with_level("info,qqbot_sdk_rs=debug")
+        .with_level("info,qqbot_sdk_core=debug")
         .try_init()
 }
 ```
@@ -184,7 +208,7 @@ cargo build --release --bin qqbot-sdk-rs
 
 已补充 2026 年 10 月新增能力：`api().materials()` 图片素材管理、`segment::card(...)` 图文卡片（单聊／群聊）和 `segment::group_at_all()` 群聊全体通知。完整示例见 [素材与卡片](docs/09-materials-and-cards.md)，接口核对见 [覆盖表](docs/10-api-coverage.md)。
 
-全面复查记录见 [字段覆盖与验证](docs/11-field-coverage.md)：核对 100 个服务端接口组合，为 55 个类型化结构记录字段契约。流式消息提供 `users().send_stream(...)` 类型化入口，新版提及与指令使用 `segment::at_everyone/at_user/cmd_enter/cmd_input`。可运行示例位于 `examples/materials.rs` 和 `examples/stream.rs`，所需环境变量见文件开头。
+全面复查记录见 [字段覆盖与验证](docs/11-field-coverage.md)：核对 100 个服务端接口组合，为 55 个类型化结构记录字段契约。流式消息提供 `users().send_stream(...)` 类型化入口，新版提及与指令使用 `segment::at_everyone/at_user/cmd_enter/cmd_input`。可运行示例位于 `packages/rust/examples/materials.rs` 和 `packages/rust/examples/stream.rs`，所需环境变量见文件开头。
 
 - [开发文档总览](docs/DEVELOPMENT.md)：先看这里，按主题跳转到对应小册子。
 - [01 起步与鉴权](docs/01-getting-started.md)：安装、客户端、AccessToken 和 ID。

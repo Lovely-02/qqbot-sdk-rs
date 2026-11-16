@@ -13,7 +13,7 @@ fn init_logging() -> Result<qqbot_sdk_rs::WorkerGuard> {
     SakuraLogger::builder()
         .with_format(LogFormat::Pretty)
         .with_target(LogTarget::Stdout)
-        .with_level("info,qqbot_sdk_rs=debug")
+        .with_level("info,qqbot_sdk_core=debug")
         .try_init()
 }
 ```
@@ -46,7 +46,7 @@ fn init_logging() -> Result<qqbot_sdk_rs::WorkerGuard> {
 - `原始内容`：WebSocket 收到的完整 JSON 帧，或 Webhook 验签通过后收到的完整 JSON 请求体。
 
 ```powershell
-$env:RUST_LOG = "info,qqbot_sdk_rs=debug"
+$env:RUST_LOG = "info,qqbot_sdk_core=debug"
 cargo run
 ```
 

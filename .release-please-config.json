@@ -1,96 +1,140 @@
 {
-	"$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
-	"packages": {
-		".": {
-            "package-name": "qqbot-sdk-rs",
-			"changelog-path": "CHANGELOG.md",
-			"release-type": "rust",
-			"bump-minor-pre-major": false,
-			"bump-patch-for-minor-pre-major": false,
-			"draft": false,
-			"prerelease": false
-		}
-	},
-	"pull-request-header": ":robot: Release Please 自动发布",
-	"changelog-sections": [
-		{
-			"type": "feat",
-			"section": "✨ 新功能",
-			"hidden": false
-		},
-		{
-			"type": "fix",
-			"section": "🐛 Bug 修复",
-			"hidden": false
-		},
-		{
-			"type": "perf",
-			"section": "⚡ 性能优化",
-			"hidden": false
-		},
-		{
-			"type": "docs",
-			"section": "📝 文档",
-			"hidden": false
-		},
-		{
-			"type": "style",
-			"section": "🎨 代码风格/格式",
-			"hidden": false
-		},
-		{
-			"type": "refactor",
-			"section": "♻️ 重构",
-			"hidden": false
-		},
-		{
-			"type": "test",
-			"section": "✅ 测试",
-			"hidden": false
-		},
-		{
-			"type": "types",
-			"section": "🔤 类型定义",
-			"hidden": false
-		},
-		{
-			"type": "deps",
-			"section": "📦 依赖更新",
-			"hidden": false
-		},
-		{
-			"type": "build",
-			"section": "🏗️ 构建/打包",
-			"hidden": false
-		},
-		{
-			"type": "ci",
-			"section": "🤖 CI/CD 配置",
-			"hidden": false
-		},
-		{
-			"type": "security",
-			"section": "🔐 安全修复",
-			"hidden": false
-		},
-		{
-			"type": "revert",
-			"section": "⏪ 回滚",
-			"hidden": false
-		},
-		{
-			"type": "release",
-			"section": "🚀 发布/版本",
-			"hidden": false
-		},
-		{
-			"type": "breaking",
-			"section": "⚠️ 重大变更（破坏性变更）"
-		},
-		{
-			"type": "other",
-			"section": "🔎 其他变更",
-			"hidden": false
-		}
-	]
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    ".": {
+      "package-name": "qqbot-sdk-rs",
+      "changelog-path": "CHANGELOG.md",
+      "release-type": "simple",
+      "bump-minor-pre-major": false,
+      "bump-patch-for-minor-pre-major": false,
+      "draft": false,
+      "prerelease": false,
+      "include-component-in-tag": true,
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "packages/core/Cargo.toml",
+          "jsonpath": "$.package.version"
+        },
+        {
+          "type": "toml",
+          "path": "packages/rust/Cargo.toml",
+          "jsonpath": "$.package.version"
+        },
+        {
+          "type": "toml",
+          "path": "packages/rust/Cargo.toml",
+          "jsonpath": "$['dependencies']['qqbot-sdk-core']['version']"
+        },
+        {
+          "type": "toml",
+          "path": "packages/npm/Cargo.toml",
+          "jsonpath": "$.package.version"
+        },
+        {
+          "type": "toml",
+          "path": "Cargo.lock",
+          "jsonpath": "$.package[?(@.name.value == 'qqbot-sdk-core' || @.name.value == 'qqbot-sdk-rs' || @.name.value == 'qqbot-sdk-node')].version"
+        },
+        {
+          "type": "json",
+          "path": "packages/npm/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "packages/npm/package-lock.json",
+          "jsonpath": "$['version']"
+        },
+        {
+          "type": "json",
+          "path": "packages/npm/package-lock.json",
+          "jsonpath": "$['packages']['']['version']"
+        }
+      ],
+      "version-file": "VERSION"
+    }
+  },
+  "pull-request-header": ":robot: Release Please 自动发布",
+  "changelog-sections": [
+    {
+      "type": "feat",
+      "section": "✨ 新功能",
+      "hidden": false
+    },
+    {
+      "type": "fix",
+      "section": "🐛 Bug 修复",
+      "hidden": false
+    },
+    {
+      "type": "perf",
+      "section": "⚡ 性能优化",
+      "hidden": false
+    },
+    {
+      "type": "docs",
+      "section": "📝 文档",
+      "hidden": false
+    },
+    {
+      "type": "style",
+      "section": "🎨 代码风格/格式",
+      "hidden": false
+    },
+    {
+      "type": "refactor",
+      "section": "♻️ 重构",
+      "hidden": false
+    },
+    {
+      "type": "test",
+      "section": "✅ 测试",
+      "hidden": false
+    },
+    {
+      "type": "types",
+      "section": "🔤 类型定义",
+      "hidden": false
+    },
+    {
+      "type": "deps",
+      "section": "📦 依赖更新",
+      "hidden": false
+    },
+    {
+      "type": "build",
+      "section": "🏗️ 构建/打包",
+      "hidden": false
+    },
+    {
+      "type": "ci",
+      "section": "🤖 CI/CD 配置",
+      "hidden": false
+    },
+    {
+      "type": "security",
+      "section": "🔐 安全修复",
+      "hidden": false
+    },
+    {
+      "type": "revert",
+      "section": "⏪ 回滚",
+      "hidden": false
+    },
+    {
+      "type": "release",
+      "section": "🚀 发布/版本",
+      "hidden": false
+    },
+    {
+      "type": "breaking",
+      "section": "⚠️ 重大变更（破坏性变更）"
+    },
+    {
+      "type": "other",
+      "section": "🔎 其他变更",
+      "hidden": false
+    }
+  ]
 }
