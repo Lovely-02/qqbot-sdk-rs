@@ -92,6 +92,14 @@ pub struct UserHandle {
 }
 
 impl UserHandle {
+    /// 获取用户基本信息。
+    ///
+    /// # Errors
+    /// 会话操作最终调用 HTTP API，失败时返回鉴权、解析、限频或平台业务错误。
+    pub async fn info(&self) -> Result<crate::models::User> {
+        self.client.api().users().get(&self.id).await
+    }
+
     pub(crate) fn new(client: Arc<QQBotClient>, id: impl Into<String>) -> Self {
         Self {
             client,

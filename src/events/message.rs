@@ -317,6 +317,8 @@ impl C2cMessageReceive {
 pub struct GroupAtMessageCreate {
     pub id: Option<String>,
     pub group_openid: Option<String>,
+    /// 跨应用关联群标识，仅绑定第三方应用时有效。
+    pub union_group_openid: Option<String>,
     pub content: Option<String>,
     pub author: Option<User>,
     pub timestamp: Option<String>,
@@ -391,6 +393,8 @@ impl GroupAtMessageCreate {
 pub struct GroupMessageCreate {
     pub id: Option<String>,
     pub group_openid: Option<String>,
+    /// 跨应用关联群标识，仅绑定第三方应用时有效。
+    pub union_group_openid: Option<String>,
     pub content: Option<String>,
     pub author: Option<User>,
     pub timestamp: Option<String>,

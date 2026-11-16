@@ -7,6 +7,8 @@
 | 接口                                | 作用                       |
 | ----------------------------------- | -------------------------- |
 | `bot.user(id)`                      | 创建单聊用户会话           |
+| `UserHandle::info`                  | 查询用户基本信息           |
+| `api().users().get`                 | 按 OpenID 查询用户基本信息 |
 | `UserHandle::send`                  | 发送主动单聊消息           |
 | `UserHandle::recall`                | 撤回单聊消息               |
 | `api().users().me`                  | 查询机器人自身资料         |
@@ -24,6 +26,10 @@ async fn main() -> Result<()> {
     let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
     let user = bot.user("USER_OPENID");
 
+    let info = user.info().await?;
+    println!("昵称：{:?}，头像：{:?}", info.username, info.avatar);
+    println!("接收主动推送：{:?}", info.allow_proactive_msg);
+
     let sent = user.send(segment::text("今天也要元气满满！✨")).await?;
     if let Some(message_id) = sent.id.as_deref() {
         user.recall(message_id).await?;
@@ -31,6 +37,8 @@ async fn main() -> Result<()> {
     Ok(())
 }
 ```
+
+`user.info()` 与 `api().users().get(id)` 调用同一接口，返回 `User`，包含 `username`、`avatar`、`union_openid` 和 `allow_proactive_msg`，限频为 10 QPS。未返回的字段为 `None`，关闭主动推送为 `Some(false)`。无好友关系时平台返回业务错误码 `40184001`；`union_openid` 仅绑定第三方应用时有效。
 
 ## 手动调用消息 API 📮
 
@@ -133,6 +141,7 @@ async fn main() -> Result<()> {
 
 ## 官方资料 📚
 
+- [获取用户基本信息](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_info.get.html)
 - [单聊发送消息](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_messages.post.html)
 - [单聊富媒体](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/rich-media.html)
 - [单聊消息事件](https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/c2c_message_create.html)

@@ -28,24 +28,24 @@ async fn main() -> Result<()> {
 
 `segment::raw(json!({...}))` 可以直接发送完整原生请求体，详见下文“原生字段直传”。
 
-| 消息段                                        | 接口作用                | 适用范围                            |
-| --------------------------------------------- | ----------------------- | ----------------------------------- |
-| `segment::text`                               | 普通文本                | 单聊、群聊、频道、频道私信          |
-| `segment::group_at_all`                       | 群聊 @全体成员          | 群聊文本；Markdown 可直接写官方标签 |
-| `segment::at_everyone` / `at_user` | 当前官方的提及标签 | 群聊／文字子频道，详见素材与卡片手册 |
-| `segment::cmd_enter` / `cmd_input` | Markdown 回车／参数指令 | 回车指令仅单聊，参数指令适用 Markdown |
-| `segment::card`                              | 图文卡片，`msg_type=8`  | 单聊、群聊                          |
-| `segment::at` / `at_all`                      | 频道内 @ 用户或全体成员 | 频道消息                            |
-| `segment::face`                               | 频道表情内嵌格式        | 频道消息                            |
-| `segment::link`                               | 频道子频道链接内嵌格式  | 频道消息                            |
-| `segment::image` / `video` / `audio` / `file` | 声明待上传的富媒体      | 单聊、群聊；频道仅支持图片          |
-| `segment::markdown`                           | Markdown 消息           | 单聊、群聊、频道                    |
-| `segment::input_notify`                       | 输入状态通知            | C2C 单聊                            |
-| `segment::keyboard`                           | 使用官方按钮键盘模板    | 与 Markdown 一起使用                |
-| `segment::button`                             | 构造内联按钮内容        | Markdown 键盘                       |
-| `segment::reply`                              | 引用已有消息展示        | 支持引用的消息场景                  |
-| `segment::reply_to` / `reply_event`           | 被动回复元数据          | 手动构造回复请求                    |
-| `segment::ark` / `embed`                      | Ark 或 Embed 结构化消息 | 仅频道与频道私信发送                |
+| 消息段                                        | 接口作用                | 适用范围                              |
+| --------------------------------------------- | ----------------------- | ------------------------------------- |
+| `segment::text`                               | 普通文本                | 单聊、群聊、频道、频道私信            |
+| `segment::group_at_all`                       | 群聊 @全体成员          | 群聊文本；Markdown 可直接写官方标签   |
+| `segment::at_everyone` / `at_user`            | 当前官方的提及标签      | 群聊／文字子频道，详见素材与卡片手册  |
+| `segment::cmd_enter` / `cmd_input`            | Markdown 回车／参数指令 | 回车指令仅单聊，参数指令适用 Markdown |
+| `segment::card`                               | 图文卡片，`msg_type=8`  | 单聊、群聊                            |
+| `segment::at` / `at_all`                      | 频道内 @ 用户或全体成员 | 频道消息                              |
+| `segment::face`                               | 频道表情内嵌格式        | 频道消息                              |
+| `segment::link`                               | 频道子频道链接内嵌格式  | 频道消息                              |
+| `segment::image` / `video` / `audio` / `file` | 声明待上传的富媒体      | 单聊、群聊；频道仅支持图片            |
+| `segment::markdown`                           | Markdown 消息           | 单聊、群聊、频道                      |
+| `segment::input_notify`                       | 输入状态通知            | C2C 单聊                              |
+| `segment::keyboard`                           | 使用官方按钮键盘模板    | 与 Markdown 一起使用                  |
+| `segment::button`                             | 构造内联按钮内容        | Markdown 键盘                         |
+| `segment::reply`                              | 引用已有消息展示        | 支持引用的消息场景                    |
+| `segment::reply_to` / `reply_event`           | 被动回复元数据          | 手动构造回复请求                      |
+| `segment::ark` / `embed`                      | Ark 或 Embed 结构化消息 | 仅频道与频道私信发送                  |
 
 ## 频道内嵌格式要小心 🎪
 

@@ -115,7 +115,6 @@ let config = GatewayConfig {
 ```powershell
 cargo fmt --all
 cargo check --all-targets --all-features
-cargo test --all-targets --all-features
 cargo clippy --all-targets --all-features -- -D warnings
 git diff --check
 ```

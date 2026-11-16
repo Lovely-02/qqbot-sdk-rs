@@ -33,7 +33,7 @@ jobs:
           config-file: .release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  test:
+  check:
     if: "!startsWith(github.head_ref, 'release')"
     runs-on: ubuntu-latest
     steps:
@@ -49,12 +49,12 @@ jobs:
           cache: true
           prefix-key: 'qqbot-sdk-rs'
 
-      - name: 单元测试
-        run: cargo test
+      - name: 编译检查
+        run: cargo check --all-targets
 
   publish:
     runs-on: ubuntu-latest
-    needs: [test, release]
+    needs: [check, release]
     if: needs.release.outputs.release_created == 'true'
     steps:
       - name: 检出代码

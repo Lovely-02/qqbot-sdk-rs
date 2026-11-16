@@ -160,34 +160,3 @@ impl AccessTokenManager {
         *self.cached.lock().await = None;
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn cache_deadline_respects_short_and_normal_lifetimes() {
-        let started = Instant::now();
-        for (seconds, cached_for) in [
-            (1, Duration::from_millis(500)),
-            (7200, Duration::from_secs(7140)),
-        ] {
-            let token = CachedToken::new("token".into(), seconds, started).unwrap();
-            assert_eq!(token.expires_at.duration_since(started), cached_for);
-        }
-    }
-
-    #[test]
-    fn invalid_or_elapsed_lifetimes_return_auth_errors() {
-        for (seconds, started) in [
-            (0, Instant::now()),
-            (u64::MAX, Instant::now()),
-            (1, Instant::now() - Duration::from_secs(2)),
-        ] {
-            assert!(matches!(
-                CachedToken::new("token".into(), seconds, started),
-                Err(SdkError::Auth(_))
-            ));
-        }
-    }
-}

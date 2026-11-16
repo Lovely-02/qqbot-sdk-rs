@@ -14,6 +14,8 @@ use serde_json::Value;
 pub struct GroupMemberAdd {
     pub timestamp: Option<i64>,
     pub group_openid: Option<String>,
+    /// 跨应用关联群标识，仅绑定第三方应用时有效。
+    pub union_group_openid: Option<String>,
     pub member_openid: Option<String>,
     pub user_openid: Option<String>,
     #[serde(flatten)]
@@ -89,6 +91,8 @@ impl GroupMemberAdd {
 pub struct GroupMemberRemove {
     pub timestamp: Option<i64>,
     pub group_openid: Option<String>,
+    /// 跨应用关联群标识，仅绑定第三方应用时有效。
+    pub union_group_openid: Option<String>,
     pub member_openid: Option<String>,
     pub user_openid: Option<String>,
     #[serde(flatten)]
@@ -164,6 +168,8 @@ impl GroupMemberRemove {
 pub struct GroupAddRobot {
     pub timestamp: Option<i64>,
     pub group_openid: Option<String>,
+    /// 跨应用关联群标识，仅绑定第三方应用时有效。
+    pub union_group_openid: Option<String>,
     pub op_member_openid: Option<String>,
     #[serde(flatten)]
     pub extra: Value,
@@ -223,6 +229,8 @@ impl GroupAddRobot {
 pub struct GroupDelRobot {
     pub timestamp: Option<i64>,
     pub group_openid: Option<String>,
+    /// 跨应用关联群标识，仅绑定第三方应用时有效。
+    pub union_group_openid: Option<String>,
     pub op_member_openid: Option<String>,
     #[serde(flatten)]
     pub extra: Value,

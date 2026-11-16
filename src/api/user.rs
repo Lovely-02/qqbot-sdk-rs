@@ -9,6 +9,20 @@ pub struct UserApi<'a> {
 }
 
 impl<'a> UserApi<'a> {
+    /// 获取单聊用户基本信息，包括昵称、头像及主动推送开关。
+    ///
+    /// # Errors
+    /// 请求、鉴权、限频或响应解析失败时返回 `SdkError`；无好友关系时平台返回 40184001。
+    pub async fn get(&self, user_openid: &str) -> Result<User> {
+        self.client
+            .request_json(
+                Method::GET,
+                &format!("/v2/users/{}/info", segment(user_openid)),
+                Option::<&Value>::None,
+            )
+            .await
+    }
+
     /// 使用类型化请求发送单聊流式消息；原始字段入口为 `send_stream_message`。
     ///
     /// # Errors

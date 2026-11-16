@@ -17,6 +17,14 @@ pub struct User {
     pub user_openid: Option<String>,
     pub member_openid: Option<String>,
     pub member_role: Option<String>,
+    /// 群场景中用户的群内昵称。
+    pub member_nickname: Option<String>,
+    /// 群消息提及对象是否为当前机器人。
+    pub is_you: Option<bool>,
+    /// 群消息提及范围：`all` 或 `single`。
+    pub scope: Option<String>,
+    /// 用户基本信息接口返回的主动推送开关。
+    pub allow_proactive_msg: Option<bool>,
 }
 
 /// 好友关系事件中返回的用户摘要。
@@ -29,6 +37,8 @@ pub struct FriendAuthor {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Group {
     pub group_openid: Option<String>,
+    /// 跨应用关联群标识，仅绑定第三方应用时有效。
+    pub union_group_openid: Option<String>,
     pub group_name: Option<String>,
     pub group_finger_memo: Option<String>,
     pub group_class_text: Option<String>,

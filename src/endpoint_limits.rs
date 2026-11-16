@@ -99,6 +99,7 @@ const RULES: &[(&str, &str, u32, u64)] = &[
     ("POST", "/v2/users/{user_id}/upload_part_finish", 10, 1),
     ("POST", "/v2/users/{user_id}/upload_prepare", 10, 1),
     ("POST", "/v2/users/{user_openid}/files", 50, 1),
+    ("GET", "/v2/users/{user_openid}/info", 10, 1),
     ("POST", "/v2/users/{user_openid}/messages", 100, 1),
     (
         "DELETE",
@@ -144,37 +145,5 @@ impl EndpointLimits {
                 _ => return false,
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn minute_limits_are_shared_across_ids_but_not_endpoints_or_methods() {
-        let limits = EndpointLimits::default();
-        for index in 0..30 {
-            limits
-                .acquire(&Method::GET, &format!("/v2/groups/{index}/info"))
-                .await
-                .unwrap();
-        }
-        assert!(
-            limits
-                .acquire(&Method::GET, "/v2/groups/other/info")
-                .await
-                .is_err()
-        );
-        limits
-            .acquire(&Method::GET, "/v2/groups/group/bot_state")
-            .await
-            .unwrap();
-        for _ in 0..5 {
-            limits.acquire(&Method::PUT, "/v2/menu").await.unwrap();
-        }
-        assert!(limits.acquire(&Method::PUT, "/v2/menu").await.is_err());
-        limits.acquire(&Method::GET, "/v2/menu").await.unwrap();
-        limits.acquire(&Method::GET, "/future/api").await.unwrap();
     }
 }

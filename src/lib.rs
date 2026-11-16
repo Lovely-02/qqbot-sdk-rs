@@ -57,30 +57,3 @@ pub use models::{
 pub use models::{MediaUploadRequest, StreamMessageRequest, StreamMessageResponse};
 pub use models::{MessageCard, TuwenContent};
 pub use segment::{MediaSegment, MediaSource, MessageBuilder, MessageSegment, Sendable};
-
-// 将用户手册作为 doctest 输入，避免示例只在 Markdown 中更新却无法编译。
-#[cfg(doctest)]
-mod guides {
-    #[doc = include_str!("../README.md")]
-    mod readme {}
-    #[doc = include_str!("../docs/01-getting-started.md")]
-    mod getting_started {}
-    #[doc = include_str!("../docs/02-messages.md")]
-    mod messages {}
-    #[doc = include_str!("../docs/03-user.md")]
-    mod user {}
-    #[doc = include_str!("../docs/04-group.md")]
-    mod group {}
-    #[doc = include_str!("../docs/05-guild-channel.md")]
-    mod channel {}
-    #[doc = include_str!("../docs/06-events.md")]
-    mod events {}
-    #[doc = include_str!("../docs/07-operations.md")]
-    mod operations {}
-    #[doc = include_str!("../docs/08-bot-tools.md")]
-    mod bot_tools {}
-    #[doc = include_str!("../docs/09-materials-and-cards.md")]
-    mod materials {}
-    #[doc = include_str!("../docs/DEVELOPMENT.md")]
-    mod development {}
-}

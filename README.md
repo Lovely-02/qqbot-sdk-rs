@@ -184,7 +184,7 @@ cargo build --release --bin qqbot-sdk-rs
 
 已补充 2026 年 10 月新增能力：`api().materials()` 图片素材管理、`segment::card(...)` 图文卡片（单聊／群聊）和 `segment::group_at_all()` 群聊全体通知。完整示例见 [素材与卡片](docs/09-materials-and-cards.md)，接口核对见 [覆盖表](docs/10-api-coverage.md)。
 
-全面复查记录见 [字段覆盖与验证](docs/11-field-coverage.md)：核对 100 个服务端接口组合，为 55 个类型化结构记录字段契约，并将手册 Rust 示例纳入编译测试。流式消息提供 `users().send_stream(...)` 类型化入口，新版提及与指令使用 `segment::at_everyone/at_user/cmd_enter/cmd_input`。可运行示例位于 `examples/materials.rs` 和 `examples/stream.rs`，所需环境变量见文件开头。
+全面复查记录见 [字段覆盖与验证](docs/11-field-coverage.md)：核对 100 个服务端接口组合，为 55 个类型化结构记录字段契约。流式消息提供 `users().send_stream(...)` 类型化入口，新版提及与指令使用 `segment::at_everyone/at_user/cmd_enter/cmd_input`。可运行示例位于 `examples/materials.rs` 和 `examples/stream.rs`，所需环境变量见文件开头。
 
 - [开发文档总览](docs/DEVELOPMENT.md)：先看这里，按主题跳转到对应小册子。
 - [01 起步与鉴权](docs/01-getting-started.md)：安装、客户端、AccessToken 和 ID。

@@ -20,13 +20,13 @@ async fn send_image(bot: &Bot, png: &[u8]) -> Result<()> {
 
 `upload` 自动计算文件大小、MD5 和 SHA1，申请上传任务，用相同的 Content-Type PUT 图片二进制，再用 COS 返回的 ETag 完成上传。PUT 不携带 QQBot AccessToken，任一步失败都会返回错误，不继续后续步骤。
 
-| 方法 | 用途 |
-| --- | --- |
-| `materials().upload(file_name, content_type, data)` | 完整上传流程，返回 `MaterialImage` |
-| `materials().prepare(&ImageUploadRequest)` | 申请上传任务，供自行执行 PUT 的调用方使用 |
-| `materials().complete(&ImageUploadCompletion)` | PUT 成功后完成上传，MD5 取 ETag 去掉引号后的值 |
-| `materials().list(cursor)` | 按上传时间倒序查询有效素材 |
-| `materials().delete(image_id)` | 删除素材并释放数量配额 |
+| 方法                                                | 用途                                           |
+| --------------------------------------------------- | ---------------------------------------------- |
+| `materials().upload(file_name, content_type, data)` | 完整上传流程，返回 `MaterialImage`             |
+| `materials().prepare(&ImageUploadRequest)`          | 申请上传任务，供自行执行 PUT 的调用方使用      |
+| `materials().complete(&ImageUploadCompletion)`      | PUT 成功后完成上传，MD5 取 ETag 去掉引号后的值 |
+| `materials().list(cursor)`                          | 按上传时间倒序查询有效素材                     |
+| `materials().delete(image_id)`                      | 删除素材并释放数量配额                         |
 
 分页示例：
 

@@ -91,7 +91,7 @@ async fn update_menu(bot: &Bot) -> Result<()> {
 | 接口                                           | 作用                     |
 | ---------------------------------------------- | ------------------------ |
 | `interactions().respond(interaction_id, body)` | 响应按钮、菜单或命令互动 |
-| `utility().generate_url_link(body)`            | 生成机器人好友分享链接 |
+| `utility().generate_url_link(body)`            | 生成机器人好友分享链接   |
 
 ```rust,no_run
 use qqbot_sdk_rs::{Bot, Result};
