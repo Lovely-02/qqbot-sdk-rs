@@ -22,7 +22,7 @@ npm install E:/02/qqbot-sdk-rs/packages/npm
 ```
 
 ```ts
-import { Bot, Intents } from 'qqbot-sdk-rs-node';
+import { Bot, Intents } from 'qqbot-sdk-js';
 
 const bot = new Bot({
   appId: process.env.QQ_APP_ID ?? '',

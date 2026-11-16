@@ -27,7 +27,7 @@
 packages/
   core/  # 共享 Rust SDK 实现：qqbot-sdk-core
   rust/  # Rust 公开入口、CLI 与示例：qqbot-sdk-rs
-  npm/   # TypeScript 封装与 napi-rs 绑定：qqbot-sdk-rs-node
+  npm/   # TypeScript 封装与 napi-rs 绑定：qqbot-sdk-js
 ```
 
 根目录为 Cargo workspace，共用 `Cargo.lock`。`VERSION` 管理统一版本。Rust 和 npm 都调用 core。

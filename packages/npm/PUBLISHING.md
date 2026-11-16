@@ -1,6 +1,6 @@
 # npm 发布流程
 
-本项目沿用 `help-html` 的 Release Please 发布方式，并在发布前构建五个平台的原生模块。npm 包名为 `qqbot-sdk-rs-node`。
+本项目沿用 `help-html` 的 Release Please 发布方式，并在发布前构建五个平台的原生模块。npm 包名为 `qqbot-sdk-js`。
 
 发行产物仅为 crates.io 上的 Cargo 包和 npm registry 上的 npm 包。原生 `.node` 文件包含在 npm 包内，不作为独立二进制或 GitHub Release 附件发布。工作流中的 `native-*` artifacts 仅用于构建 job 之间传递文件。
 
@@ -44,7 +44,7 @@ Rust SDK、Node.js 绑定 crate 和 npm 包共用版本号，当前统一为 `0.
 
 ### npm
 
-确认你拥有 `qqbot-sdk-rs-node` 包名的发布权限。如果该名称已被占用，修改 `packages/npm/package.json` 和 `package-lock.json` 中的 npm 包名；统一标签仍使用 Rust crate 名称。
+确认你拥有 `qqbot-sdk-js` 包名的发布权限。如果该名称已被占用，修改 `packages/npm/package.json` 和 `package-lock.json` 中的 npm 包名；统一标签仍使用 Rust crate 名称。
 
 已有 npm 包时，在包的 Settings → Trusted Publisher 中选择 GitHub Actions，填写：
 
@@ -61,12 +61,12 @@ Rust SDK、Node.js 绑定 crate 和 npm 包共用版本号，当前统一为 `0.
 首次尚未创建 npm 包时，需要先用自己的 npm 账号发布首个版本，再在包设置中添加 Trusted Publisher：
 
 1. 合并首次版本 PR，让工作流完成五平台构建和打包。即使最后因尚未配置 npm 身份而发布失败，`npm-package` artifact 已保留。
-2. 下载该 artifact，解压得到 npm archive，例如 `qqbot-sdk-rs-node-0.2.2.tgz`；文件名中的版本以本次统一版本为准。
+2. 下载该 artifact，解压得到 npm archive，例如 `qqbot-sdk-js-0.2.2.tgz`；文件名中的版本以本次统一版本为准。
 3. 在本机运行以下命令，按 npm 提示完成账号验证：
 
 ```powershell
 npm login --registry=https://registry.npmjs.org
-npm publish ./qqbot-sdk-rs-node-0.2.2.tgz --access public --registry=https://registry.npmjs.org
+npm publish ./qqbot-sdk-js-0.2.2.tgz --access public --registry=https://registry.npmjs.org
 ```
 
 4. 在 npm 包设置中添加上表的 Trusted Publisher。后续版本可自动发布；首个版本已经发布，无需重跑相同版本。
