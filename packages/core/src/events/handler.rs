@@ -8,13 +8,30 @@ use async_trait::async_trait;
 use futures_util::future::BoxFuture;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, AtomicU64, Ordering},
+    },
+};
 use tokio::sync::RwLock;
 use tracing::{Instrument, debug, info, info_span};
 
 type HandlerFuture = BoxFuture<'static, Result<()>>;
 type HandlerFn = dyn Fn(EventEnvelope, Arc<QQBotClient>) -> HandlerFuture + Send + Sync;
 type HandlerMap = HashMap<String, Vec<Arc<dyn ErasedHandler>>>;
+
+static NEXT_LISTENER_ID: AtomicU64 = AtomicU64::new(1);
+
+#[derive(Clone)]
+struct NamedHandler {
+    id: super::ListenerId,
+    name: String,
+    handler: Arc<dyn ErasedHandler>,
+    once: bool,
+    claimed: Arc<AtomicBool>,
+}
 
 /// 返回 JSON 路径对应的非空字符串字段。
 fn string_at<'a>(data: &'a Value, path: &[&str]) -> Option<&'a str> {
@@ -413,12 +430,67 @@ impl ErasedHandler for ClosureHandler {
 #[derive(Clone, Default)]
 pub struct EventRouter {
     handlers: Arc<RwLock<HandlerMap>>,
+    named: Arc<RwLock<Vec<NamedHandler>>>,
 }
 
 impl EventRouter {
     /// 创建空路由器。
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// 按官方名称、camelCase 别名或点分主题订阅事件。
+    pub async fn on_named<F, Fut>(&self, name: impl Into<String>, handler: F) -> super::ListenerId
+    where
+        F: Fn(super::BotEvent) -> Fut + Send + Sync + 'static,
+        Fut: std::future::Future<Output = Result<()>> + Send + 'static,
+    {
+        self.register_named(name.into(), handler, false).await
+    }
+
+    /// 只处理首个匹配事件；并发分发时也最多调用一次。
+    pub async fn once_named<F, Fut>(&self, name: impl Into<String>, handler: F) -> super::ListenerId
+    where
+        F: Fn(super::BotEvent) -> Fut + Send + Sync + 'static,
+        Fut: std::future::Future<Output = Result<()>> + Send + 'static,
+    {
+        self.register_named(name.into(), handler, true).await
+    }
+
+    async fn register_named<F, Fut>(
+        &self,
+        name: String,
+        handler: F,
+        once: bool,
+    ) -> super::ListenerId
+    where
+        F: Fn(super::BotEvent) -> Fut + Send + Sync + 'static,
+        Fut: std::future::Future<Output = Result<()>> + Send + 'static,
+    {
+        let id = super::ListenerId(NEXT_LISTENER_ID.fetch_add(1, Ordering::Relaxed));
+        let handler = Arc::new(handler);
+        let wrapped = ClosureHandler {
+            call_fn: Arc::new(move |event, client| {
+                let handler = handler.clone();
+                Box::pin(async move { handler(super::BotEvent::new(event, client)).await })
+            }),
+        };
+        self.named.write().await.push(NamedHandler {
+            id,
+            name,
+            handler: Arc::new(wrapped),
+            once,
+            claimed: Arc::new(AtomicBool::new(false)),
+        });
+        id
+    }
+
+    /// 取消字符串订阅。已开始分发的事件仍可能持有处理器快照。
+    pub async fn off(&self, id: super::ListenerId) -> bool {
+        let mut handlers = self.named.write().await;
+        let before = handlers.len();
+        handlers.retain(|handler| handler.id != id);
+        handlers.len() != before
     }
 
     /// 注册处理所有事件的处理器。
@@ -536,6 +608,28 @@ impl EventRouter {
                 .call(envelope.clone(), client.clone())
                 .instrument(span.clone())
                 .await?;
+        }
+        // Bot 订阅同时适用于独立创建的网关路由器和 Webhook 路由器。
+        let bot_router = client.event_router();
+        let mut named = self.named.read().await.clone();
+        if !Arc::ptr_eq(&self.named, &bot_router.named) {
+            named.extend(bot_router.named.read().await.iter().cloned());
+        }
+        for name in super::topics::subscription_names(&envelope.name) {
+            for handler in named.iter().filter(|handler| handler.name == name) {
+                if handler.once {
+                    if handler.claimed.swap(true, Ordering::AcqRel) {
+                        continue;
+                    }
+                    self.off(handler.id).await;
+                    bot_router.off(handler.id).await;
+                }
+                handler
+                    .handler
+                    .call(envelope.clone(), client.clone())
+                    .instrument(span.clone())
+                    .await?;
+            }
         }
         debug!(
             event_type = %envelope.name,

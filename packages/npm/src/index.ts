@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { NativeBot } from '../native.js';
+import { eventTopics, camelAlias, type SubscriptionEvents } from './event-topics';
 
 export interface BotOptions {
   appId: string;
@@ -48,22 +49,9 @@ export interface BotEvent {
 export interface MessageEvent extends BotEvent {
   reply(message: Message): Promise<MessageResponse>;
 }
-export interface BotEvents {
+export interface BotEvents extends SubscriptionEvents {
   event: [BotEvent];
-  ready: [BotEvent];
   error: [Error];
-  groupAtMessageCreate: [MessageEvent];
-  groupMessageCreate: [MessageEvent];
-  c2cMessageCreate: [MessageEvent];
-  atMessageCreate: [MessageEvent];
-  messageCreate: [MessageEvent];
-  directMessageCreate: [MessageEvent];
-  GROUP_AT_MESSAGE_CREATE: [MessageEvent];
-  GROUP_MESSAGE_CREATE: [MessageEvent];
-  C2C_MESSAGE_CREATE: [MessageEvent];
-  AT_MESSAGE_CREATE: [MessageEvent];
-  MESSAGE_CREATE: [MessageEvent];
-  DIRECT_MESSAGE_CREATE: [MessageEvent];
 }
 export const Intents = Object.freeze({
   GUILDS: 1, GUILD_MEMBERS: 1 << 1, GUILD_MESSAGES: 1 << 9,
@@ -73,16 +61,6 @@ export const Intents = Object.freeze({
   FORUMS_EVENT: 1 << 28, AUDIO_ACTION: 1 << 29,
   PUBLIC_GUILD_MESSAGES: 1 << 30,
 });
-const aliases: Readonly<Record<string, string>> = Object.freeze({
-  GROUP_AT_MESSAGE_CREATE: 'groupAtMessageCreate',
-  GROUP_MESSAGE_CREATE: 'groupMessageCreate',
-  C2C_MESSAGE_CREATE: 'c2cMessageCreate',
-  AT_MESSAGE_CREATE: 'atMessageCreate',
-  MESSAGE_CREATE: 'messageCreate',
-  DIRECT_MESSAGE_CREATE: 'directMessageCreate',
-  READY: 'ready',
-});
-
 type TargetKind = 'user' | 'group' | 'channel' | 'direct';
 export class Bot extends EventEmitter<BotEvents> {
   #native: NativeBot;
@@ -132,8 +110,15 @@ export class Bot extends EventEmitter<BotEvents> {
     }
     this.emit('event', event);
     this.emit(event.name as keyof BotEvents, event);
-    const alias = aliases[event.name];
-    if (alias) this.emit(alias as keyof BotEvents, event);
+    let topic: string | undefined = Object.hasOwn(eventTopics, event.name)
+      ? eventTopics[event.name as keyof typeof eventTopics] : undefined;
+    if (topic) this.emit(camelAlias(event.name) as keyof BotEvents, event);
+    while (topic) {
+      this.emit(topic as keyof BotEvents, event);
+      const separator = topic.lastIndexOf('.');
+      if (separator === -1) break;
+      topic = topic.slice(0, separator);
+    }
   }
   /** 停止时兑现 Promise，发生不可恢复的错误时拒绝 Promise；每个 Bot 实例只能启动一次。 */
   start(): Promise<void> {

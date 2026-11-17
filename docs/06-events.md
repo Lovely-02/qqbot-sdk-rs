@@ -4,6 +4,49 @@ SDK 支持 WebSocket 网关和 Webhook 两种接收方式。事件对象会尽�
 
 ## 强类型事件路由 🎯
 
+### Rust：直接在 Bot 上订阅
+
+```rust,no_run
+use std::sync::Arc;
+use qqbot_sdk_rs::{Bot, BotMode, GatewayClient, GatewayConfig, Result};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let bot = Arc::new(Bot::new("APP_ID", "APP_SECRET", BotMode::PublicWebSocket)?);
+    bot.on("message", |e| async move {
+        println!("{}: {}", e.name, e.data);
+        e.reply("收到啦！").await?;
+        Ok(())
+    }).await;
+    bot.on("notice.group.increase", |e| async move {
+        println!("群成员加入：{}", e.data);
+        Ok(())
+    }).await;
+    bot.on("request.group.add", |e| async move {
+        println!("加群申请：{}", e.data);
+        Ok(())
+    }).await;
+    bot.once("system.online", |e| async move {
+        println!("已上线：{}", e.data);
+        Ok(())
+    }).await;
+
+    let router = bot.event_router();
+    let config = GatewayConfig::for_bot(&bot);
+    GatewayClient::new(bot, router, config)?.run().await
+}
+```
+
+Rust 和 npm 包支持相同的 58 个官方事件、camelCase 别名及点分主题，完整映射通过 `EVENT_TOPICS` 导出。订阅从 `event`、官方名称、camelCase 别名，再向具体主题及其父级分发；例如 `notice.group.increase` → `notice.group` → `notice`。未知事件可按官方名称或通过 `event` 订阅。
+
+`bot.on` 和 `bot.once` 返回 `ListenerId`，使用 `bot.off(id).await` 取消；Bot 克隆共享订阅，`once` 在并发分发中也最多执行一次。已开始分发的事件可能仍持有取消前的处理器快照。处理器返回 `Result<()>`，错误沿现有路由返回，当前事件的后续处理器不会继续运行。
+
+字符串订阅参数为 `BotEvent`，提供 `name`、`id`、`sequence`、原始 `data`、`bot()` 和 `parse::<T>()`。`parse` 校验官方名称并保留客户端上下文，例如 `e.parse::<GroupMemberAdd>()?.member()?`。六类消息支持 `e.reply(...)`，其他事件调用该方法返回 `SdkError::InvalidInput`。
+
+现有 `EventRouter::on::<T, _, _>` 保持不变，字符串订阅使用 `router.on_named(...)` / `router.once_named(...)` / `router.off(...)`。先执行现有强类型／原始处理器，再执行字符串订阅；同一主题内按注册顺序执行，独立路由器上的字符串处理器先于 Bot 上的同主题处理器。Bot 订阅在独立网关、分片和 Webhook 路由器分发时也生效；传入 `bot.event_router()` 不会重复调用。监听器不会自动修改 Intents，仍需按平台权限配置订阅范围。
+
+Node.js 包支持分层事件订阅：`bot.on('message', async e => e.reply('收到'))`、`bot.on('notice.group.increase', e => console.log(e.data))`、`bot.on('request.group.add', e => console.log(e.data))`。主题从具体名称向父级触发，官方事件名和 camelCase 别名也继续可用。完整通知、请求、互动和系统事件分类见 [npm 事件订阅说明](../packages/npm/README.md#分层事件订阅)。以下 `EventRouter` 为 Rust API。
+
 `EventRouter::on::<T, _, _>` 会把官方事件 JSON 解析成具体 Rust 类型，并按注册顺序执行处理器。
 
 ```rust,no_run

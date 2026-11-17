@@ -65,6 +65,60 @@ npm run example
 
 ## API 与生命周期
 
+### 分层事件订阅
+
+```ts
+bot.on('message', async (e) => {
+  console.log(e.name, e.data.content);
+  await e.reply('收到');
+});
+bot.on('notice', (e) => console.log('通知', e.name, e.data));
+bot.on('notice.friend.increase', (e) => console.log('新增好友', e.data));
+bot.on('notice.group.increase', (e) => console.log('群成员加入', e.data));
+bot.on('request.group.add', (e) => console.log('加群申请', e.data));
+bot.on('interaction', (e) => console.log('互动', e.data));
+bot.on('system.online', (e) => console.log('已上线', e.data));
+bot.on('system.resumed', () => console.log('会话已恢复'));
+```
+
+每个官方事件依次触发 `event`、官方名称、camelCase 别名，再从具体主题向父级触发。例如 `GROUP_MEMBER_ADD` 依次触发 `groupMemberAdd`、`notice.group.increase`、`notice.group`、`notice`（之前还有 `event` 和官方名称）。同一事件对象会交给所有处理器，`e.name` 始终保留官方名称。未知事件仍可通过官方名称和 `event` 接收。
+
+| 主题（均支持订阅父级） | 官方来源 |
+| --- | --- |
+| `message.group` | 群 @ 消息／群消息 |
+| `message.private.friend/guild` | C2C 消息／频道私信 |
+| `message.guild.at/normal` | 频道 @ 消息／频道消息 |
+| `notice.friend.increase/decrease` | 好友添加／删除 |
+| `notice.friend.message.receive/reject` | 好友开启／关闭主动消息 |
+| `notice.group.increase/decrease` | 群成员加入／退出 |
+| `notice.group.bot.add/remove` | 机器人加入／退出群 |
+| `notice.group.message.receive/reject` | 群开启／关闭主动消息 |
+| `request.group.add` | 用户申请加群 |
+| `notice.subscription.status` | 订阅消息授权变更 |
+| `notice.guild.create/update/delete` | 频道变更 |
+| `notice.channel.create/update/delete` | 子频道变更 |
+| `notice.guild.member.increase/update/decrease` | 频道成员变更 |
+| `notice.guild.recall`、`notice.private.guild.recall` | 频道消息撤回／频道私信撤回 |
+| `notice.guild.reaction.add/remove` | 频道表情表态 |
+| `notice.message.audit.pass/reject` | 消息审核 |
+| `notice.forum.thread.create/update/delete` | 论坛主题 |
+| `notice.forum.post.create/delete`、`notice.forum.reply.create/delete` | 论坛帖子／回复 |
+| `notice.forum.audit` | 论坛审核结果 |
+| `notice.forum.open.thread.create/update/delete` | 开放论坛主题 |
+| `notice.forum.open.post.create/delete`、`notice.forum.open.reply.create/delete` | 开放论坛帖子／回复 |
+| `notice.audio.start/finish`、`notice.audio.mic.on/off` | 音频动作 |
+| `notice.audio.member.enter/exit` | 音视频或直播成员进出 |
+| `interaction.create` | 互动事件 |
+| `system.online`、`system.resumed` | READY／RESUMED |
+
+表格中的 `/` 表示多个可选后缀，例如 `notice.friend.increase` 和 `notice.friend.decrease`。完整映射见 [event-topics.ts](src/event-topics.ts)。所有这些官方名称、camelCase 别名和分层主题都有 TypeScript 提示；消息主题的 `e.reply` 为必有方法，通知与请求的 `e.reply` 为可选方法。
+
+`GROUP_AT_MESSAGE_CREATE` 和 `GROUP_MESSAGE_CREATE` 统一触发 `message.group`，然后触发 `message`；需要区分官方来源时可读取 `e.name`。
+
+`on`、`once`、`off`、`addListener`、`prependListener`、`removeListener`、`removeAllListeners` 沿用 Node EventEmitter；`on` 返回 Bot，可链式注册。`once('notice', handler)` 会在第一条通知后移除；`off` 需传入注册时的同一个函数。
+
+这套分类适配 QQ 官方机器人协议：数据仍位于 `e.data`，ID 为官方 openid。当前官方网关没有提供扫码登录、滑块、戳一戳、群禁言、讨论组、已读同步等事件来源，因此不提供这些订阅主题。请求事件不附加 `approve()` 方法。注册监听器不会自动修改 Intents 或申请权限，仍需配置平台权限和 `BotOptions.intents`。
+
 - `bot.user(openid).send(message)`：单聊。
 - `bot.group(openid).send(message)`：群聊。
 - `bot.channel(channelId).send(message)`：频道子频道。

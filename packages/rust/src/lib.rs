@@ -29,8 +29,8 @@ pub use entities::{
     UserHandle,
 };
 pub use error::{Result, SdkError};
-pub use events::GatewayShardManager;
 pub use events::notifications::*;
+pub use events::{BotEvent, EVENT_TOPICS, GatewayShardManager, ListenerId};
 pub use events::{
     C2cMessageReceive, C2cMsgReceive, C2cMsgReject, CallbackValidationResponse, ChannelCreate,
     ChannelDelete, ChannelEvent, ChannelUpdate, DirectMessageCreate, Event, EventContext,

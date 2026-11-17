@@ -11,6 +11,8 @@ pub mod notifications;
 pub mod opcode;
 pub mod payload;
 pub mod shards;
+pub mod subscription;
+mod topics;
 pub mod webhook;
 pub mod websocket;
 
@@ -39,6 +41,8 @@ pub use notifications::*;
 pub use opcode::OpCode;
 pub use payload::Payload;
 pub use shards::GatewayShardManager;
+pub use subscription::{BotEvent, ListenerId};
+pub use topics::EVENT_TOPICS;
 pub use webhook::{CallbackValidationResponse, Webhook, WebhookVerifier};
 pub use websocket::{GatewayClient, GatewayConfig};
 /// 返回网关事件的中文名称。

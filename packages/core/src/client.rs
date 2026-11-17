@@ -117,6 +117,7 @@ pub struct QQBotClient {
     pub(crate) limiter: RateLimiter,
     endpoint_limits: Arc<crate::endpoint_limits::EndpointLimits>,
     pub(crate) reply_sequences: Arc<crate::reply::ReplySequences>,
+    event_router: crate::events::EventRouter,
 }
 
 /// 客户端别名。
@@ -171,12 +172,45 @@ impl QQBotClient {
             limiter,
             endpoint_limits: Arc::default(),
             reply_sequences: Arc::default(),
+            event_router: crate::events::EventRouter::new(),
         })
     }
 
     /// 返回 API 入口。
     pub fn api(&self) -> Api<'_> {
         Api { client: self }
+    }
+
+    /// 返回与此 Bot 共享的事件路由器。
+    pub fn event_router(&self) -> crate::events::EventRouter {
+        self.event_router.clone()
+    }
+
+    /// 订阅官方名称、camelCase 别名或 `message`、`notice.group` 等分层主题。
+    pub async fn on<F, Fut>(&self, name: impl Into<String>, handler: F) -> crate::events::ListenerId
+    where
+        F: Fn(crate::events::BotEvent) -> Fut + Send + Sync + 'static,
+        Fut: std::future::Future<Output = Result<()>> + Send + 'static,
+    {
+        self.event_router.on_named(name, handler).await
+    }
+
+    /// 只处理首个匹配事件。
+    pub async fn once<F, Fut>(
+        &self,
+        name: impl Into<String>,
+        handler: F,
+    ) -> crate::events::ListenerId
+    where
+        F: Fn(crate::events::BotEvent) -> Fut + Send + Sync + 'static,
+        Fut: std::future::Future<Output = Result<()>> + Send + 'static,
+    {
+        self.event_router.once_named(name, handler).await
+    }
+
+    /// 取消 `on` 或 `once` 返回的订阅。
+    pub async fn off(&self, id: crate::events::ListenerId) -> bool {
+        self.event_router.off(id).await
     }
 
     /// 返回鉴权管理器。

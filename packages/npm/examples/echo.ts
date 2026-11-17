@@ -6,10 +6,10 @@ const bot = new Bot({
 });
 bot.on('error', console.error);
 bot.on('ready', () => console.log('机器人已连接'));
-bot.on('groupAtMessageCreate', async (event) => {
+bot.on('message.group', async (event) => {
   await event.reply('收到啦！这里是 Node.js 小助手');
 });
-bot.on('c2cMessageCreate', async (event) => {
+bot.on('message.private.friend', async (event) => {
   await event.reply('你好呀！');
 });
 process.once('SIGINT', () => { bot.stop().catch(console.error); });

@@ -64,6 +64,23 @@ qqbot-sdk-rs = { git = "https://github.com/Lovely-02/qqbot-sdk-rs.git", branch =
 
 ## 五分钟上手：发一条消息 💌
 
+Rust 支持按事件名称和分层主题订阅：
+
+```rust,no_run
+# async fn register(bot: &qqbot_sdk_rs::Bot) {
+bot.on("message", |e| async move {
+    e.reply("收到").await?;
+    Ok(())
+}).await;
+bot.on("notice.group.increase", |e| async move {
+    println!("群成员加入：{}", e.data);
+    Ok(())
+}).await;
+# }
+```
+
+支持与 Node.js 相同的 58 个官方事件及分层通知、请求、互动、系统主题，提供 `once` / `off`。完整启动示例见 [subscriptions.rs](examples/subscriptions.rs)，订阅顺序、错误行为与强类型路由兼容方式见 [事件文档](../../docs/06-events.md)。
+
 ```rust,no_run
 use qqbot_sdk_rs::{segment, Bot, Result};
 
