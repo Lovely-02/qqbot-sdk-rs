@@ -243,3 +243,19 @@ cargo build --release --bin qqbot-sdk-rs
 ## 许可证 📜
 
 本项目采用 [MIT 许可证](LICENSE)。
+
+
+### 完整接口入口
+
+Rust 通过 `bot.api()` 提供 `bot()`、`messages()`、`users()`、`groups()`、`guilds()`、`channels()`、`materials()`、`interactions()`、`menu()`、`panels()` 和 `utility()`。包含消息撤回、成员移除、黑名单、入群审核、禁言、角色和权限管理。完整清单见仓库 `docs/10-api-coverage.md`。
+
+```rust,no_run
+# async fn example(bot: &qqbot_sdk_rs::Bot) -> qqbot_sdk_rs::Result<()> {
+bot.api().messages().delete_group("group-openid", "message-id").await?;
+bot.api().groups().members_page("group-openid", None).await?;
+bot.api().guilds().roles("guild-id").await?;
+# Ok(())
+# }
+```
+
+Webhook 使用 `BotMode::Webhook`、`WebhookVerifier::from_secret` 和 `Webhook`：`validation_response` 处理地址验证，`dispatch` 验签并分发到事件路由，`acknowledgement` 生成确认响应。HTTP 框架负责保留原始请求体、传入签名头及返回响应。对应 JS 入口为 `mode: 'webhook'` 和 `bot.handleWebhook(...)`。平台权限及撤回时限仍由 QQ 平台控制。

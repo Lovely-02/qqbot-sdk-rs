@@ -132,3 +132,29 @@ bot.on('system.resumed', () => console.log('会话已恢复'));
 - 主动发送受 QQ 平台权限和限频规则约束。当前绑定覆盖消息收发和 WebSocket 生命周期，未绑定所有管理 API 或 Webhook 接入。
 
 自动发布采用 Release Please + GitHub Actions，先构建五个平台的原生二进制，再通过 npm Trusted Publishing 发布。首次配置、日常发版和失败重试见 [npm 发布流程](PUBLISHING.md)。本地 `npm pack` 默认仅包含已经构建的平台文件。
+
+
+### 完整 HTTP API 与管理能力
+
+`bot.api` 暴露共用 Rust 核心的全部公开 API 方法，分组为 `bot`、`messages`、`users`、`groups`、`guilds`、`channels`、`materials`、`interactions`、`menu`、`panels`、`utility`。Rust 的下划线方法名在 JS 中使用 camelCase，参数顺序一致，分页可选参数可省略。请求体字段保留官方下划线命名。方法声明见 `src/api.ts`，由 `python scripts/generate-api.py` 从核心生成。
+
+```ts
+await bot.group('group-openid').recall('message-id');
+await bot.api.groups.membersPage('group-openid', 'cursor');
+await bot.api.groups.batchRemoveMembers('group-openid', { member_openids: ['member'] });
+await bot.api.guilds.roles('guild-id');
+await bot.api.channels.memberPermissions('channel-id', 'user-id');
+```
+
+### Webhook
+
+使用 `mode: 'webhook'`，HTTP 服务将原始 Buffer 请求体与 `X-Signature-Timestamp`、`X-Signature-Ed25519` 传给 `bot.handleWebhook(timestamp, signature, rawBody)`。成功返回值作为 JSON HTTP 响应；验签失败抛出异常，服务应返回失败状态。此方法处理 `op=13` 地址验证和 `op=12` 确认，并通过同一套 `bot.on(...)` 分发事件，支持 `event.reply(...)`。Webhook 模式无需调用 `start()`；HTTP 服务监听与关闭由应用管理。必须保留原始请求体字节，不能先解析再序列化。
+
+```ts
+const bot = new Bot({ appId, appSecret, mode: 'webhook' });
+bot.on('message.group', async event => { await event.reply('收到'); });
+// 在 HTTP 路由中：
+const response = bot.handleWebhook(timestamp, signature, rawBody);
+```
+
+API 完整暴露不代表机器人已获平台授权；管理和撤回的权限与时间限制由 QQ 平台决定。

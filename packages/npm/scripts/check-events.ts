@@ -13,6 +13,10 @@ class NativeBotMock {
     sent.push(args);
     return Promise.resolve({ id: 'reply' });
   }
+  apiCall(...args: unknown[]): Promise<null> {
+    sent.push(args);
+    return Promise.resolve(null);
+  }
   stop(): void {}
 }
 // 在加载包装层前替换原生边界，验证真实分发路径而不连接 QQ。
@@ -100,6 +104,17 @@ async function main(): Promise<void> {
   receive(null, JSON.stringify({ name: 'MESSAGE_CREATE', data: {} }));
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(errors[0]?.message, 'handler failed');
+  sent.length = 0;
+  await bot.user('u').recall('m');
+  await bot.group('g').recall('m');
+  await bot.channel('c').recall('m', true);
+  await bot.direct('d').recall('m', true);
+  assert.deepEqual(sent, [
+    ['messages.deleteC2c', ['u', 'm']],
+    ['messages.deleteGroup', ['g', 'm']],
+    ['channels.recallMessage', ['c', 'm', true]],
+    ['messages.deleteDm', ['d', 'm', true]],
+  ]);
   await bot.stop();
   console.log(`${Object.keys(eventTopics).length} event subscriptions verified`);
 }

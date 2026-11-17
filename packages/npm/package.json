@@ -23,6 +23,7 @@
     "build:debug": "tsx scripts/build.ts --debug",
     "build:ts": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.check.json",
+    "test:api": "tsx scripts/check-api.ts",
     "test:events": "tsx scripts/check-events.ts",
     "prepack": "npm run build:ts && tsx scripts/check-package.ts",
     "check:release": "tsx scripts/check-package.ts --all",

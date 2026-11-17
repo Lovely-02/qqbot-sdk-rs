@@ -1,3 +1,5 @@
+import { createApi, type BotApi } from './api';
+export type { BotApi, MediaTarget } from './api';
 import { EventEmitter } from 'node:events';
 import { NativeBot } from '../native.js';
 import { eventTopics, camelAlias, type SubscriptionEvents } from './event-topics';
@@ -5,7 +7,7 @@ import { eventTopics, camelAlias, type SubscriptionEvents } from './event-topics
 export interface BotOptions {
   appId: string;
   appSecret: string;
-  mode?: 'public' | 'private';
+  mode?: 'public' | 'private' | 'webhook';
   intents?: number;
 }
 /** QQ MessageRequest 字段保留官方的下划线命名方式。 */
@@ -28,6 +30,7 @@ export type MessageResponse = Record<string, unknown>;
 export interface Target {
   id: string;
   send(message: Message): Promise<MessageResponse>;
+  recall(messageId: string, hideTip?: boolean): Promise<void>;
 }
 export interface EventData extends Record<string, unknown> {
   id?: string;
@@ -64,11 +67,13 @@ export const Intents = Object.freeze({
 type TargetKind = 'user' | 'group' | 'channel' | 'direct';
 export class Bot extends EventEmitter<BotEvents> {
   #native: NativeBot;
+  readonly api: BotApi;
   #running?: Promise<void>;
   #stopped = false;
   constructor(options: BotOptions) {
     super({ captureRejections: true });
     this.#native = new NativeBot(options);
+    this.api = createApi((operation, args) => this.#native.apiCall(operation, args));
   }
   override on<K extends keyof BotEvents>(name: K, listener: (...args: BotEvents[K]) => void): this;
   override on(name: string | symbol, listener: (...args: unknown[]) => void): this;
@@ -86,7 +91,25 @@ export class Bot extends EventEmitter<BotEvents> {
   channel(id: string): Target { return this.#target('channel', id); }
   direct(id: string): Target { return this.#target('direct', id); }
   #target(kind: TargetKind, id: string): Target {
-    return { id, send: (message) => this.#native.send(kind, id, message) as Promise<MessageResponse> };
+    return {
+      id, send: (message) => this.#native.send(kind, id, message) as Promise<MessageResponse>,
+      recall: async (messageId, hideTip = false) => {
+        switch (kind) {
+          case 'user': await this.api.messages.deleteC2c(id, messageId); break;
+          case 'group': await this.api.messages.deleteGroup(id, messageId); break;
+          case 'channel': await this.api.channels.recallMessage(id, messageId, hideTip); break;
+          case 'direct': await this.api.messages.deleteDm(id, messageId, hideTip); break;
+        }
+      },
+    };
+  }
+  /** 传入未经 JSON 解析的 HTTP 请求体及签名头；将返回值作为 JSON 响应。 */
+  handleWebhook(timestamp: string, signature: string, body: Buffer): Record<string, unknown> {
+    const result = this.#native.webhook(timestamp, signature, body) as {
+      response: Record<string, unknown>; event?: BotEvent;
+    };
+    if (result.event) this.#event(JSON.stringify(result.event));
+    return result.response;
   }
   #event(payload: string): void {
     const event = JSON.parse(payload) as BotEvent;

@@ -1,3 +1,4 @@
+mod api;
 use napi::{bindgen_prelude::*, threadsafe_function::ThreadsafeFunction};
 use napi_derive::napi;
 use qqbot_sdk_core::{Bot, BotMode, EventRouter, GatewayClient, GatewayConfig, Intents, Sendable};
@@ -26,6 +27,7 @@ pub struct NodeBot {
     intents: Option<u32>,
     started: AtomicBool,
     shutdown: watch::Sender<bool>,
+    secret: String,
 }
 
 #[napi]
@@ -38,10 +40,16 @@ impl NodeBot {
         let mode = match options.mode.as_deref().unwrap_or("public") {
             "public" => BotMode::PublicWebSocket,
             "private" => BotMode::PrivateWebSocket,
-            _ => return Err(Error::from_reason("mode must be public or private")),
+            "webhook" => BotMode::Webhook,
+            _ => {
+                return Err(Error::from_reason(
+                    "mode must be public, private or webhook",
+                ));
+            }
         };
         let (shutdown, _) = watch::channel(false);
         Ok(Self {
+            secret: options.app_secret.clone(),
             client: Arc::new(Bot::new(options.app_id, options.app_secret, mode).map_err(js_error)?),
             intents: options.intents,
             started: AtomicBool::new(false),
@@ -52,6 +60,9 @@ impl NodeBot {
     /// 仅运行一次：停止时兑现 Promise，网关发生不可恢复的错误时拒绝 Promise。
     #[napi]
     pub async fn run(&self, callback: ThreadsafeFunction<String, ()>) -> Result<()> {
+        if self.client.mode().is_webhook() {
+            return Err(Error::from_reason("Use handleWebhook in webhook mode"));
+        }
         if self.started.swap(true, Ordering::AcqRel) {
             return Err(Error::from_reason(
                 "Bot already started; create a new Bot after stop",
@@ -89,6 +100,35 @@ impl NodeBot {
     }
 
     #[napi]
+    pub async fn api_call(&self, operation: String, args: Vec<Value>) -> Result<Value> {
+        self.call_api(&operation, args).await
+    }
+
+    /// 原始请求体必须保持字节不变，验签成功后才返回事件。
+    #[napi]
+    pub fn webhook(&self, timestamp: String, signature: String, body: Buffer) -> Result<Value> {
+        if !self.client.mode().is_webhook() {
+            return Err(Error::from_reason("Bot must use webhook mode"));
+        }
+        let webhook = qqbot_sdk_core::Webhook::new(
+            qqbot_sdk_core::WebhookVerifier::from_secret(&self.secret).map_err(js_error)?,
+        );
+        let payload = webhook
+            .parse(&timestamp, &signature, &body)
+            .map_err(js_error)?;
+        if payload.op == 13 {
+            return Ok(
+                json!({ "response": qqbot_sdk_core::Webhook::validation_response(&body, &self.secret).map_err(js_error)? }),
+            );
+        }
+        Ok(json!({
+            "response": qqbot_sdk_core::Webhook::acknowledgement(),
+            "event": { "id": payload.id, "name": payload.t.unwrap_or_default(),
+                "sequence": payload.s.map(|value| value.to_string()), "data": payload.d }
+        }))
+    }
+
+    #[napi]
     pub fn stop(&self) {
         self.shutdown.send_replace(true);
     }
@@ -120,5 +160,17 @@ impl NodeBot {
         }
         .map_err(js_error)?;
         serde_json::to_value(result).map_err(js_error)
+    }
+}
+
+fn sendable(value: Value) -> Result<Sendable> {
+    match value {
+        Value::String(text) => Ok(Sendable::from(text)),
+        Value::Object(_) => Ok(Sendable::from(
+            serde_json::from_value::<qqbot_sdk_core::MessageRequest>(value).map_err(js_error)?,
+        )),
+        _ => Err(Error::from_reason(
+            "message must be text or a MessageRequest object",
+        )),
     }
 }
