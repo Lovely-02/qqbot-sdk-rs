@@ -11,6 +11,21 @@
 - 补充消息／审核事件字段，保留业务错误链路和异步审核数据。
 - 同步官方接口、字段覆盖清单与示例。
 
+## [0.3.0](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.2.1...qqbot-sdk-rs-v0.3.0) (2026-11-17)
+
+
+### ✨ 新功能
+
+* 新增 Rust 和 Node.js 分层事件订阅 ([07d582b](https://github.com/Lovely-02/qqbot-sdk-rs/commit/07d582bdb414398e447e0ea2a3f668ca432922a1))
+* 重构共享核心并提供 TypeScript npm 包与统一发布流程 ([01e7ba6](https://github.com/Lovely-02/qqbot-sdk-rs/commit/01e7ba64c74e07d776a36e35d8ea265339dfd718))
+
+
+### 🐛 Bug 修复
+
+* **npm:** 将原生绑定 Cargo 包名统一为 qqbot-sdk-js ([64ef051](https://github.com/Lovely-02/qqbot-sdk-rs/commit/64ef051de0ae433878ddaa7ebe2fd4bd5123861c))
+* **npm:** 将发布包名统一为 qqbot-sdk-js ([926c7a1](https://github.com/Lovely-02/qqbot-sdk-rs/commit/926c7a1ac1a46d97494060c18101d29db8a965e5))
+* **npm:** 配置 GitHub Packages 自动发布 ([9ddc6e0](https://github.com/Lovely-02/qqbot-sdk-rs/commit/9ddc6e065ec07972e90654bf994253d7e79f9fb5))
+
 ## [0.2.1](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.2.0...qqbot-sdk-rs-v0.2.1) (2026-11-16)
 
 
