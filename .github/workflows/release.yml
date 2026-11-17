@@ -3,6 +3,7 @@ name: 🚀 统一发布
 on:
   push:
     branches: [main]
+    tags: [github-packages-v*]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -33,18 +34,18 @@ jobs:
   release:
     name: 📝 准备统一版本
     needs: check
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/github-packages-v'))
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
       issues: write
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name || inputs.tag }}
+      release_created: ${{ steps.release.outputs.release_created || startsWith(github.ref, 'refs/tags/github-packages-v') }}
+      tag_name: ${{ steps.release.outputs.tag_name || inputs.tag || (startsWith(github.ref, 'refs/tags/github-packages-v') && github.ref_name) }}
     steps:
       - name: 📝 创建统一版本 PR 与发布记录
-        if: inputs.tag == ''
+        if: inputs.tag == '' && github.ref == 'refs/heads/main'
         uses: googleapis/release-please-action@v4
         id: release
         with:
@@ -176,16 +177,17 @@ jobs:
           if-no-files-found: error
 
   npm-publish:
-    name: 📦 发布 npm 包
+    name: 📦 发布 GitHub Packages
     needs: [check, release, npm-build]
     if: >-
-      github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request' &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/github-packages-v')) &&
       needs['npm-build'].result == 'success' &&
       (needs.release.outputs.release_created == 'true' || (inputs.tag != '' && inputs.target != 'rust'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
+      packages: write
     defaults:
       run:
         working-directory: packages/npm
@@ -198,9 +200,8 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
-      - name: 🔐 配置 npm 信任发布工具
-        run: npm install --global npm@11 --registry=https://registry.npmjs.org
+          registry-url: https://npm.pkg.github.com
+          scope: '@lovely-02'
       - name: 📚 安装 npm 依赖
         run: npm ci --registry=https://registry.npmjs.org
       - name: 📥 汇总多平台构建产物
@@ -226,4 +227,6 @@ jobs:
           path: packages/npm/*.tgz
           if-no-files-found: error
       - name: 📤 发布 npm 包
-        run: npm publish ./*.tgz --provenance --access public
+        run: npm publish ./*.tgz --registry=https://npm.pkg.github.com
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

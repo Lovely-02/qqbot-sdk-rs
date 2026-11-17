@@ -14,7 +14,7 @@ if (process.argv.includes('--all')) {
     if (!binaries.includes(file)) throw new Error(`Missing release binary: ${file}`);
   }
 }
-if (process.env.RELEASE_TAG && process.env.RELEASE_TAG !== `qqbot-sdk-rs-v${pkg.version}`) {
+if (process.env.RELEASE_TAG && ![`qqbot-sdk-rs-v${pkg.version}`, `github-packages-v${pkg.version}`].includes(process.env.RELEASE_TAG)) {
   throw new Error(`Release tag ${process.env.RELEASE_TAG} does not match qqbot-sdk-rs-v${pkg.version}`);
 }
 console.log(`Package ${pkg.name}@${pkg.version}: ${binaries.length} native binaries verified`);

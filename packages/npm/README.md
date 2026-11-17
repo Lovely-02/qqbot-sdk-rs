@@ -2,6 +2,18 @@
 
 通过 napi-rs 调用本仓库 Rust SDK。需要 Node.js 22+、Rust 工具链，以及本机 C/C++ 链接工具（Windows 使用 Visual Studio Build Tools 的 C++ 桌面开发组件）。当前依赖采用 napi-rs 3，Rust 版本要求以 Cargo 的依赖检查为准；建议使用最新 stable 工具链。
 
+## 安装发行包
+
+包名为 `@lovely-02/qqbot-sdk-js`，发布到 GitHub Packages。安装前使用具有 `read:packages` 权限的 GitHub Personal Access Token（classic）登录：
+
+```powershell
+npm login --scope=@lovely-02 --registry=https://npm.pkg.github.com --auth-type=legacy
+npm config set @lovely-02:registry https://npm.pkg.github.com
+npm install @lovely-02/qqbot-sdk-js
+```
+
+登录时密码填写 Token，公开包同样需要认证。发行包用户无需 Rust 工具链。
+
 ## 从源码构建
 
 在仓库根目录执行：
@@ -13,7 +25,7 @@ npm run build
 npm run typecheck
 ```
 
-封装源码位于 `src/index.ts`，示例和发布脚本同样使用 TypeScript。`npm run build` 先构建 Rust 原生模块，再用 `tsc` 生成 `dist/index.js` 和 `dist/index.d.ts`；npm 用户无需安装 TypeScript。开发时可以使用 `npm run build:debug`，`npm run typecheck` 检查全部 TypeScript 源码。`native.js` 是 napi-rs 自动生成的原生模块加载器。生成的 `.node` 仅适用于构建时的操作系统和 CPU 架构，换平台需要重新编译。当前未发布 npm 包，也未提供跨平台预编译包。
+封装源码位于 `src/index.ts`，示例和发布脚本同样使用 TypeScript。`npm run build` 先构建 Rust 原生模块，再用 `tsc` 生成 `dist/index.js` 和 `dist/index.d.ts`；npm 用户无需安装 TypeScript。开发时可以使用 `npm run build:debug`，`npm run typecheck` 检查全部 TypeScript 源码。`native.js` 是 napi-rs 自动生成的原生模块加载器。生成的 `.node` 仅适用于构建时的操作系统和 CPU 架构，换平台需要重新编译。正式发行包由 CI 汇总五个平台的预编译模块。
 
 在另一个 Node.js 项目中使用本地构建结果：
 
@@ -22,7 +34,7 @@ npm install E:/02/qqbot-sdk-rs/packages/npm
 ```
 
 ```ts
-import { Bot, Intents } from 'qqbot-sdk-js';
+import { Bot, Intents } from '@lovely-02/qqbot-sdk-js';
 
 const bot = new Bot({
   appId: process.env.QQ_APP_ID ?? '',

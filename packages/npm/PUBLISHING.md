@@ -1,8 +1,8 @@
 # npm 发布流程
 
-本项目沿用 `help-html` 的 Release Please 发布方式，并在发布前构建五个平台的原生模块。npm 包名为 `qqbot-sdk-js`。
+本项目沿用 `help-html` 的 Release Please 发布方式，并在发布前构建五个平台的原生模块。npm 包名为 `@lovely-02/qqbot-sdk-js`。
 
-发行产物仅为 crates.io 上的 Cargo 包和 npm registry 上的 npm 包。原生 `.node` 文件包含在 npm 包内，不作为独立二进制或 GitHub Release 附件发布。工作流中的 `native-*` artifacts 仅用于构建 job 之间传递文件。
+发行产物仅为 crates.io 上的 Cargo 包和 GitHub Packages 上的 npm 包。原生 `.node` 文件包含在 npm 包内，不作为独立二进制或 GitHub Release 附件发布。工作流中的 `native-*` artifacts 仅用于构建 job 之间传递文件。
 
 ## 自动发布链路
 
@@ -10,7 +10,7 @@
 2. `.github/workflows/release.yml` 运行 Release Please，创建统一版本 PR，更新 core、Rust 入口、Node.js 绑定、npm 包、全部本地包锁文件及根目录 VERSION、CHANGELOG 和 manifest。
 3. 合并版本 PR 后，Release Please 创建 `qqbot-sdk-rs-vX.Y.Z` 标签和 GitHub Release。
 4. 同一次工作流按标签检出源码，在 Windows、Linux 和 macOS runner 上构建原生模块。
-5. Rust 发布 job 先发布共享的 `qqbot-sdk-core`，再发布同一标签的 `qqbot-sdk-rs` 到 crates.io；npm 发布 job 汇总所有二进制，检查统一版本，执行类型检查与 `npm pack`，保存 `npm-package` artifact，然后通过 npm Trusted Publishing 发布。两个仓库的发布不是原子操作，单边失败时可单独重试。
+5. Rust 发布 job 先发布共享的 `qqbot-sdk-core`，再发布同一标签的 `qqbot-sdk-rs` 到 crates.io；npm 发布 job 汇总所有二进制，检查统一版本，执行类型检查与 `npm pack`，保存 `npm-package` artifact，然后通过 GitHub Packages 发布。两个仓库的发布不是原子操作，单边失败时可单独重试。
 
 发布步骤直接依赖 Release Please 的输出，不依赖 GITHUB_TOKEN 创建标签后再次触发工作流。
 
@@ -42,36 +42,13 @@ Rust SDK、Node.js 绑定 crate 和 npm 包共用版本号，当前统一为 `0.
 
 仓库地址默认使用 `Lovely-02/qqbot-sdk-rs`。如果迁移仓库，同时修改 `packages/npm/package.json` 中的 repository、homepage 和 bugs。
 
-### npm
+### GitHub Packages
 
-确认你拥有 `qqbot-sdk-js` 包名的发布权限。如果该名称已被占用，修改 `packages/npm/package.json` 和 `package-lock.json` 中的 npm 包名；统一标签仍使用 Rust crate 名称。
+npm 包名为 `@lovely-02/qqbot-sdk-js`，registry 为 `https://npm.pkg.github.com`。工作流使用自动提供的 `GITHUB_TOKEN` 和 `packages: write` 权限，无需 npm 账号或 NPM_TOKEN。首次发布后可在 GitHub 包设置中调整可见性。
 
-已有 npm 包时，在包的 Settings → Trusted Publisher 中选择 GitHub Actions，填写：
+在已通过检查的提交上创建并推送 `github-packages-v0.2.1` 标签，可以只构建、发布当前统一版本的 npm 包，不会发布 Cargo 包。标签版本必须与 VERSION 一致；后续正常统一发版仍由 Release Please 触发。
 
-| 设置 | 值 |
-| --- | --- |
-| Organization or user | `Lovely-02` |
-| Repository | `qqbot-sdk-rs` |
-| Workflow filename | `release.yml` |
-| Environment | 留空 |
-| Allowed actions | 允许直接 `npm publish` |
-
-工作流使用 Node.js 24、npm 11 和 `id-token: write`，不需要配置 NPM_TOKEN。npm 官方要求 npm CLI ≥11.5.1、Node.js ≥22.14.0，配置细节见 [npm Trusted Publishing 文档](https://docs.npmjs.com/trusted-publishers/)。
-
-首次尚未创建 npm 包时，需要先用自己的 npm 账号发布首个版本，再在包设置中添加 Trusted Publisher：
-
-1. 合并首次版本 PR，让工作流完成五平台构建和打包。即使最后因尚未配置 npm 身份而发布失败，`npm-package` artifact 已保留。
-2. 下载该 artifact，解压得到 npm archive，例如 `qqbot-sdk-js-0.2.2.tgz`；文件名中的版本以本次统一版本为准。
-3. 在本机运行以下命令，按 npm 提示完成账号验证：
-
-```powershell
-npm login --registry=https://registry.npmjs.org
-npm publish ./qqbot-sdk-js-0.2.2.tgz --access public --registry=https://registry.npmjs.org
-```
-
-4. 在 npm 包设置中添加上表的 Trusted Publisher。后续版本可自动发布；首个版本已经发布，无需重跑相同版本。
-
-请使用 CI 汇总的 archive 首发。本机直接 `npm pack` 默认只含当前平台二进制，适合本地验证，不等于完整多平台发行包。
+安装方法见 README；用户需要具有 `read:packages` 的 classic Token。请勿提交 Token。
 
 ## 日常操作
 
@@ -97,7 +74,7 @@ npm pack --dry-run
 
 - Rust core 已发布而 Rust 入口失败：手动重试时选择 `target=rust`，勾选 `skip-core`，继续发布 Rust 入口；正常发版保持该选项关闭。
 - 包版本已存在：npm 禁止覆盖相同版本。如果上次其实已经发布成功，则无需重试；有代码变更时发布新版本。
-- OIDC 身份错误：检查 npm 上的 owner、repo、工作流文件名和允许直接发布的选项，尤其是文件名必须为 `release.yml`。
+- 身份或权限错误：检查工作流的 `packages: write` 和包的仓库访问权限。
 - 构建失败：修复源码或构建配置并发布新版本；手动重试仍使用标签处的源码，不能包含标签之后的修复。
 - 缺少二进制：检查五个平台的 build job 和 `native-*` artifacts；只有全部成功后才进入发布步骤。
 

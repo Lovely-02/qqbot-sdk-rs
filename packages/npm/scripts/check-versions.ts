@@ -36,7 +36,7 @@ export function checkVersions(root: string, tag?: string): string {
     if (actual !== version) throw new Error(`${file}: ${actual} differs from Rust SDK ${version}`);
   }
   const expectedTag = `qqbot-sdk-rs-v${version}`;
-  if (tag && tag !== expectedTag) throw new Error(`Release tag ${tag} must be ${expectedTag}`);
+  if (tag && tag !== expectedTag && tag !== `github-packages-v${version}`) throw new Error(`Release tag ${tag} must be ${expectedTag}`);
   return version;
 }
 

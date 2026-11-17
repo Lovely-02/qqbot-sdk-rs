@@ -1,5 +1,5 @@
 {
-  "name": "qqbot-sdk-js",
+  "name": "@lovely-02/qqbot-sdk-js",
   "version": "0.2.1",
   "description": "Node.js native bindings for qqbot-sdk-rs",
   "license": "MIT",
@@ -49,6 +49,6 @@
   },
   "publishConfig": {
     "access": "public",
-    "registry": "https://registry.npmjs.org"
+    "registry": "https://npm.pkg.github.com"
   }
 }
