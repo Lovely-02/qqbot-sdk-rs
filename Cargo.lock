@@ -915,7 +915,7 @@ dependencies = [
 
 [[package]]
 name = "qqbot-sdk-core"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "async-trait",
  "base64",
@@ -939,7 +939,7 @@ dependencies = [
 
 [[package]]
 name = "qqbot-sdk-js"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "napi",
  "napi-build",
@@ -951,7 +951,7 @@ dependencies = [
 
 [[package]]
 name = "qqbot-sdk-rs"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "qqbot-sdk-core",
  "serde_json",
