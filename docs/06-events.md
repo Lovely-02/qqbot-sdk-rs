@@ -1,10 +1,12 @@
 # 06 事件与网关：让小助手听见世界 🌙
 
+为小助手戴上接收天线吧！这里讲清订阅、Intents、回复上下文、重连和 Webhook，让每一条事件都能找到自己的处理器。📡
+
 SDK 支持 WebSocket 网关和 Webhook 两种接收方式。事件对象会尽量保留官方字段，同时注入当前客户端上下文，因此可以直接调用 `event.reply()`、`event.group()`、`event.user()`、`event.channel()` 或 `event.guild()`。
 
 ## 强类型事件路由 🎯
 
-### Rust：直接在 Bot 上订阅
+### Rust：直接在 Bot 上订阅 🪄
 
 ```rust,no_run
 use std::sync::Arc;
@@ -39,7 +41,7 @@ async fn main() -> Result<()> {
 
 Rust 和 npm 包支持相同的 58 个官方事件、camelCase 别名及点分主题，完整映射通过 `EVENT_TOPICS` 导出。订阅从 `event`、官方名称、camelCase 别名，再向具体主题及其父级分发；例如 `notice.group.increase` → `notice.group` → `notice`。未知事件可按官方名称或通过 `event` 订阅。
 
-`bot.on` 和 `bot.once` 返回 `ListenerId`，使用 `bot.off(id).await` 取消；Bot 克隆共享订阅，`once` 在并发分发中也最多执行一次。已开始分发的事件可能仍持有取消前的处理器快照。处理器返回 `Result<()>`，错误沿现有路由返回，当前事件的后续处理器不会继续运行。
+`bot.on` 和 `bot.once` 返回 `ListenerId`，使用 `bot.off(id).await` 取消；Bot 克隆共享订阅，`once` 在并发分发中也最多执行一次。已开始分发的事件可能仍持有取消前的处理器快照。处理器返回 `Result<()>`；默认遇错停止当前事件的后续分发，也可配置继续执行，详见“处理器错误策略”。
 
 字符串订阅参数为 `BotEvent`，提供 `name`、`id`、`sequence`、原始 `data`、`bot()` 和 `parse::<T>()`。`parse` 校验官方名称并保留客户端上下文，例如 `e.parse::<GroupMemberAdd>()?.member()?`。六类消息支持 `e.reply(...)`，其他事件调用该方法返回 `SdkError::InvalidInput`。
 
@@ -114,9 +116,9 @@ async fn main() -> Result<()> {
 | `AudioStart` / `AudioFinish` / `AudioOnMic` / `AudioOffMic`                                        | 音频动作                 |
 | `AudioOrLiveChannelMemberEnter` / `AudioOrLiveChannelMemberExit`                                   | 音视频／直播成员进出     |
 
-论坛历史示例的数字 ID 会转换为字符串；标题和正文兼容字符串与富文本数组。上述通知提供数据读取，不附加回复辅助方法。成员进出及开放论坛等特殊通知仍须按平台权限配置订阅，不自动加入默认 Intents。
+论坛数字 ID 会转换为字符串；标题和正文兼容字符串与富文本数组。上述通知提供数据读取，不附加回复辅助方法。成员进出及开放论坛等特殊通知仍须按平台权限配置订阅，不自动加入默认 Intents。
 
-## 自动分片与启动配额
+## 自动分片与启动配额 🌸
 
 `GatewayShardManager` 获取 `/gateway/bot`，启动推荐数量的分片，并在单进程内协调 `remaining`、`reset_after` 和每五秒的 `max_concurrency`。配额和启动桶在建立连接前预约，配额耗尽时等待预约归还或重置，重置后向平台重新获取配额。取消或连接失败时尚未发送的预约会归还并唤醒等待者；已经尝试发送的 Identify 不会因响应丢失而归还配额，跨周期的旧预约也不会给新周期增加余额。只有非空 session_id 与已处理序号同时存在时才使用 Resume；READY 处理器被取消且尚无检查点时，清除不完整会话并重新 Identify，不发送 seq=null。Resume 不消耗 Identify 配额，重新 Identify 会再次排队。使用 `with_shard_count(..., Some(count))` 可覆盖推荐数量。
 
@@ -199,9 +201,30 @@ async fn handle_webhook(
 
 普通事件处理完成后，Webhook 接入方可以返回 `Webhook::acknowledgement()` 生成的 `{"op":12}`，表示已收到平台推送；回调地址验证请求则返回 `validation_response(...)` 的 JSON。
 
+## 处理器错误策略 🌸
+
+默认情况下，处理器返回错误会立即停止当前事件的后续分发，并向调用方返回该错误。需要让其他订阅继续接收同一事件时，在创建网关或处理 Webhook 前配置路由器：
+
+```rust,no_run
+use qqbot_sdk_rs::events::{DispatchErrorPolicy, EventRouter};
+
+let router = EventRouter::new()
+    .with_error_policy(DispatchErrorPolicy::Continue);
+```
+
+继续模式会记录每个处理器错误，执行其余匹配处理器，最后返回第一个错误；处理器仍顺序执行，`once` 处理器最多调用一次。策略属于此路由器实例，克隆时复制；对一个克隆调用 `with_error_policy` 不会修改其他克隆的策略。请将配置后的路由器传给 `GatewayClient` 或 `Webhook::dispatch`。
+
+手动分发时，也可以用 `router.dispatch_with_policy(envelope, bot, DispatchErrorPolicy::Continue).await` 为单次事件指定策略。
+
+继续模式隔离的是同一事件内的处理器失败，不会吞掉最终错误。网关仍按事件分发失败处理，保留已提交序号并进入恢复流程；Webhook 调用方仍会收到错误。成功执行过的处理器可能在事件重投时再次执行，应按事件 ID 或业务键保证幂等。
+
 ## 官方资料 📚
 
 - [事件订阅](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/channel/message/event.html)
 - [网关连接](https://bot.q.qq.com/wiki/develop/api-v2/dev-prepare/event-emit/websocket.html)
 - [单聊事件](https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/c2c_message_create.html)
 - [群 @ 事件](https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_at_message_create.html)
+
+---
+
+📚 [回到开发手册](DEVELOPMENT.md) · 🌸 [查看项目介绍](../README.md)

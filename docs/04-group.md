@@ -1,5 +1,7 @@
 # 04 群聊：和大家一起热闹起来 👥
 
+欢迎来到群聊茶会！消息、成员、申请和管理接口都放在这一章，先选好群 OpenID，再为小助手安排任务吧。🍵
+
 群聊使用群 OpenID。`bot.group(GROUP_OPENID)` 是日常业务的首选入口；需要分页、审批或管理能力时，再进入 `bot.api().groups()`。
 
 ## 群会话实体 🎀
@@ -48,6 +50,14 @@ async fn main() -> Result<()> {
 ```
 
 事件处理器里应优先使用 `event.reply(...)`，它会自动把当前事件的 `msg_id` 或 `event_id` 带入请求。
+
+## 群聊回复与标识小卡片 ⏳
+
+群聊被动回复有效期为消息发出后 **5 分钟**，每条消息最多回复 **5 次**。SDK 按目标群与 `msg_id` 分配递增序号，缓存从最近一次预约起保留 **5 分钟**，不额外增加余量。重试、失败后的序号规则见 [消息手册](02-messages.md)。
+
+🪪 `group_openid` 用于实际群接口调用；`union_group_openid` 用于绑定第三方应用后的跨应用关联。两者不要混用。群消息作者的群内昵称位于 `author.member_nickname`，头像位于 `author.avatar`，读取时需处理未提供字段的情况。
+
+🍵 管理操作还受机器人权限和群状态约束。拿到了群 ID 不代表可以审批、移除成员或修改配置；失败时保留平台错误码与链路 ID，方便定位。
 
 ## 成员、分页与机器人状态 📚
 
@@ -127,3 +137,7 @@ async fn next_strategies(bot: &Bot) -> Result<()> {
 - [群消息发送](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_groups_group_openid_messages.post.html)
 - [群消息事件](https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/group_at_message_create.html)
 - [群机器人能力总览](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/group/)
+
+---
+
+📚 [回到开发手册](DEVELOPMENT.md) · 🌸 [查看项目介绍](../README.md)

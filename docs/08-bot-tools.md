@@ -1,5 +1,7 @@
 # 08 Bot 工具箱：给机器人装上小道具 🧰
 
+打开道具箱～机器人资料、菜单、指令面板、互动回调和分享链接都在这里，各个小道具按需取用就好。🧰
+
 这一章收纳不属于单聊、群聊或频道管理的 Bot 级接口：机器人资料、频道列表、频道私信创建、指令面板、自定义菜单、互动回调和 QQ 跳转链接。
 
 ## Bot 信息与频道列表 🤖
@@ -120,3 +122,7 @@ async fn tools(bot: &Bot) -> Result<()> {
 
 - [QQ 机器人 API v2 总览](https://bot.q.qq.com/wiki/develop/api-v2/)
 - [互动事件](https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/interaction_create.html)
+
+---
+
+📚 [回到开发手册](DEVELOPMENT.md) · 🌸 [查看项目介绍](../README.md)

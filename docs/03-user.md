@@ -1,5 +1,7 @@
 # 03 好友与单聊：给用户递一封小纸条 💌
 
+给好友递纸条之前，先认准 `user_openid` 哦。这里从资料查询讲到普通消息、富媒体与流式回答，陪你走完整条单聊路线。💌
+
 单聊使用用户 OpenID。推荐入口是 `bot.user(USER_OPENID)`，它把发送、撤回和查询资料收拢在一个轻量会话实体里。
 
 ## 会话实体与基础 API 👤
@@ -61,6 +63,19 @@ async fn main() -> Result<()> {
 
 同一请求中 `msg_id` 和 `event_id` 必须二选一。事件处理器里优先使用 `event.reply(...)`，这样不需要手写这些元数据。
 
+## 被动回复时间卡 ⏳
+
+| 项目     | 单聊规则                           |
+| -------- | ---------------------------------- |
+| 有效期   | 消息发出后 60 分钟                 |
+| 回复次数 | 每条消息最多 4 次                  |
+| 自动序号 | 同一目标与 `msg_id` 共享递增计数   |
+| 序号缓存 | 最近一次预约后 60 分钟，无额外余量 |
+
+💡 缓存保留时间与平台消息时效是两回事：很晚才第一次回复，也不会重新获得 60 分钟的平台时效。事件里直接调用 `reply` 最省心；重试同一次发送时请显式保留原序号，详细说明见 [消息手册](02-messages.md)。
+
+头像、昵称与主动推送开关都是可选字段；`None` 表示平台没有提供，`Some(false)` 才表示明确关闭。`union_openid` 用于已绑定第三方应用的跨应用关联，不能替代调用接口时的 `user_openid`。🪪
+
 ## 单聊富媒体 📷
 
 URL 直传：
@@ -104,7 +119,7 @@ async fn main() -> Result<()> {
 }
 ```
 
-SDK 会计算官方要求的 MD5、SHA-1 和前 10 MB 校验值，并逐片完成上传。`file_type` 为 `1` 图片、`2` 视频、`3` 语音、`4` 文件。
+SDK 会计算官方要求的 MD5、SHA-1 和前 10002432 字节的校验值，并逐片完成上传。`file_type` 为 `1` 图片、`2` 视频、`3` 语音、`4` 文件。
 
 ## 流式消息 🌊
 
@@ -145,3 +160,7 @@ async fn main() -> Result<()> {
 - [单聊发送消息](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_messages.post.html)
 - [单聊富媒体](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/rich-media.html)
 - [单聊消息事件](https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/c2c_message_create.html)
+
+---
+
+📚 [回到开发手册](DEVELOPMENT.md) · 🌸 [查看项目介绍](../README.md)

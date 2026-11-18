@@ -1,8 +1,10 @@
-# 09 图片素材、图文卡片与群聊全体通知
+# 09 素材与卡片：给消息穿上漂亮衣服 🎨
 
-根据 [2026 年 10 月官方变更记录](https://bot.q.qq.com/wiki/develop/api-v2/changelog.html)，SDK 补充了 10 月 21 日的素材管理、10 月 26 日的群聊全体通知和 10 月 28 日的图文卡片。
+给消息加一点闪亮装饰吧！图片素材负责 Markdown 配图，图文卡片负责内容展示，全体提及则记得遵守群权限与次数限制哦。🎨
 
-## Markdown 图片素材
+SDK 支持图片素材管理、单聊／群聊图文卡片和群聊全体通知。下文说明当前调用方式与限制。
+
+## Markdown 图片素材 🌸
 
 `bot.api().materials()` 管理机器人级的图片素材。它与 `messages().upload_media()` 返回的会话富媒体 `file_info` 用途不同：素材上传返回 `qqbot-media://` 链接，可直接写入 Markdown，并可重复使用。
 
@@ -52,11 +54,13 @@ async fn list_images(bot: &Bot) -> Result<()> {
 
 平台支持 PNG、JPEG、GIF、WebP，文件名扩展名与 MIME 类型必须一致，单张不超过 10 MB，单机器人最多 100 张。上传任务有效期为 4 小时，预签名 URL 的有效期见 `expires_in`。图片连续 90 天未被消息引用会失效，成功引用后有效期自动顺延。
 
-持久化保存 `image_id` 和 `url`；`preview_url` 是短期预览地址，不应长期保存。删除后引用立即失效，但已发送的消息不受影响。链接与机器人绑定，不能跨机器人使用。SDK 校验上传元数据，图片实际内容需由调用方保证合法。
+持久化保存 `image_id` 和 `url`；`preview_url` 是短期预览地址，不应长期保存。删除后引用立即失效，但已发送的消息不受影响。链接与机器人绑定，不能跨机器人使用。SDK 在计算 MD5/SHA1 前校验文件大小、扩展名和 MIME，避免对无效输入计算哈希；图片实际内容需由调用方保证合法。
+
+素材列表中的 `total` 同时接受整数和数字字符串，公开类型为 `u64`；`created_at`、`expires_at` 同时接受整数和数字字符串，公开类型为 `i64`。负数数量、越界数字及无效文本会返回解析错误。
 
 平台错误保留在 `SdkError::Api` 中，包括数量超限 `40035007`、图片不存在 `40035008`、引用过期 `40035009`、引用无效或不属于当前机器人 `40035010`。完整协议见 [官方素材管理](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/material-management.html)。
 
-## 单聊和群聊图文卡片
+## 单聊和群聊图文卡片 🌸
 
 ```rust,no_run
 use qqbot_sdk_rs::{Bot, Result, TuwenContent, segment};
@@ -76,7 +80,7 @@ async fn send_card(bot: &Bot) -> Result<()> {
 
 标题要求 1–50 个字符，描述 1–200 个字符；跳转链接和图片链接必须使用 HTTPS，每个链接最多 1024 个字符。发送前在本地校验，不满足要求返回 `SdkError::InvalidInput`。协议以 [单聊发送接口](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_messages.post.html) 和 [群聊发送接口](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_groups_group_openid_messages.post.html) 为准。
 
-## 群聊 @全体成员
+## 群聊 @全体成员 🌸
 
 ```rust,no_run
 use qqbot_sdk_rs::{Bot, Result, segment};
@@ -96,7 +100,7 @@ Markdown 使用 `segment::markdown("<qqbot-at-everyone /> **活动通知**")`。
 
 `segment::at_all()` 和 `segment::at(...)` 保留旧频道格式兼容；官方已声明旧协议即将弃用，新代码建议改用 `at_everyone()` 与 `at_user(...)`。完整场景规则见 [官方文本交互](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/trans/text-chain.html)。
 
-## 用户提及和 Markdown 指令
+## 用户提及和 Markdown 指令 🌸
 
 文字子频道使用 `segment::at_user("USER_OPENID")`；群聊提及用户仅支持 Markdown：
 
@@ -115,10 +119,14 @@ async fn mention_member(bot: &Bot) -> Result<()> {
 
 `segment::cmd_input("/search 关键词", Some("搜索".into()), true)` 生成 Markdown 参数指令，点击后填入输入框，`reference=true` 表示带原消息引用。两个帮助函数会自动 URL 编码 `text/show`，原始文本最多 100 字符。需要与其他 Markdown 内容组合时，直接在 `segment::markdown(...)` 中写入官方标签。
 
-## 嵌套按钮字段
+## 嵌套按钮字段 🌸
 
 `Keyboard.content` 和 `segment::button(Value)` 保留完整官方对象，支持 `group_id`、`render_data.style`（含 3/4）、`action.anchor`、`action.modal.content/confirm_text/cancel_text`、权限和其他扩展字段。频道 Markdown 可携带键盘，具体能力仍受平台权限控制。频道 Markdown 仅允许与键盘组合，不能再混入普通文本、图片、Ark 或 Embed。
 
 完整接口核对清单见 [官方接口覆盖表](10-api-coverage.md)。
 
 字段覆盖、事件结构和官方页面差异见 [字段覆盖与验证](11-field-coverage.md)。
+
+---
+
+📚 [回到开发手册](DEVELOPMENT.md) · 🌸 [查看项目介绍](../README.md)

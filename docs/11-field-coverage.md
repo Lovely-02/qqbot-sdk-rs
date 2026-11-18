@@ -1,19 +1,10 @@
-# 11 字段覆盖与验证
+# 11 字段小图鉴：请求与响应逐项查 🔎
 
-核对日期：2026-10-31，官方文档站 v1.46.0。本轮覆盖 206 个 API v2 页面，其中包含 47 个自动生成 HTTP 接口页面、22 个自动生成事件页面，以及频道专题接口、模型、素材、鉴权和网关文档。完整 HTTP 路径清单见 [接口覆盖表](10-api-coverage.md)。
+这里是字段小图鉴：查结构、对字段、看来源，接收新数据时也别忘了区分可选字段和原始扩展对象哦。🔎
 
-## 本轮补充与修正
+本文记录当前类型化结构与官方字段的对应关系。HTTP 路径及调用入口见 [接口覆盖表](10-api-coverage.md)，运行限制见 [运行行为与边界](12-runtime-behavior.md)。部分嵌套结构使用 `serde_json::Value` 保留扩展字段。
 
-- 审批策略列表新增 cursor/limit 分页入口；群成员、申请、黑名单和策略提供独立 GET JSON 请求体入口，保留现有查询参数形式。
-- 流式单聊新增 `StreamMessageRequest` 的 10 个字段和 `StreamMessageResponse` 的 `remain_msg_len` 等字段，修正旧示例。
-- 富媒体新增 `MediaUploadRequest` 六个字段的类型化入口，公开预上传整体 block_size、parts 和 upload_config 三个配置字段。
-- 补充 `MessageAudited.seq_in_channel`、频道／频道私信消息事件的 edited_timestamp/ark，以及 Embed.description。
-- 修正新版 @全体标签的文字子频道支持，补充 @用户、回车指令和参数指令帮助函数及场景校验。
-- 允许频道 Markdown 携带内嵌键盘，保留 group_id、样式 3/4、anchor、modal 等嵌套字段。
-- API／鉴权错误保留 trace_id 和 data，识别 200/201/202 中的非零业务码；异步审核信息不会再被当作已发送消息丢弃。
-- 修复 Webhook 根级导出。
-
-## 类型化字段契约
+## 类型化字段契约 🌸
 
 下表记录类型化结构对应的官方字段及来源。
 
@@ -79,7 +70,7 @@ MessageCard/TuwenContent 字段来自发送接口；Embed.description 来自官�
 
 `union_group_openid` 用于跨应用关联群，仅绑定第三方应用时有效，调用接口仍使用 `group_openid`。新增字段均为 `Option`，兼容旧推送。
 
-## 可扩展请求／响应字段
+## 可扩展请求／响应字段 🌸
 
 下表记录自动生成接口页的顶层字段及嵌套表字段。SDK 以类型化结构或原始 `serde_json::Value` 接受／返回这些字段：Markdown、键盘内容、群管理、角色、日程、菜单和面板等可扩展对象不采用字段白名单裁剪。重复字段名按所在官方嵌套对象理解；具体层级请点击对应官方页面。
 
@@ -133,17 +124,19 @@ MessageCard/TuwenContent 字段来自发送接口；Embed.description 来自官�
 | [撤回单聊消息](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_messages_message_id.delete.html)                                       | —                                                                                                                                                 | —                                                                                                                                                                                                                                                                                                                                                                                                                  | —                                                                                                                                                                                                                                      |
 | [流式发送单聊消息](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_stream_messages.post.html)                                         | `input_mode`, `input_state`, `index`, `content_type`, `content_raw`, `event_id`, `msg_id`, `stream_msg_id`, `msg_seq`, `is_wakeup`                | —                                                                                                                                                                                                                                                                                                                                                                                                                  | `id`, `timestamp`, `ext_info`, `remain_msg_len`, `ref_idx`                                                                                                                                                                             |
 
-## 验证边界
+## 验证边界 🌸
 
+没有使用真实机器人凭据调用线上服务；接口权限、平台白名单、自然日配额、文件真实格式校验以及部分 GET 分页参数传输形式仍需在线上确认。字段清单用于查阅当前实现，不保证平台权限或线上行为。
 
+## 官方文档差异 🌸
 
-没有使用真实机器人凭据调用线上服务；接口权限、平台白名单、自然日配额、文件真实格式校验以及部分 GET 分页参数传输形式仍需在线上确认。此处的完整性结论限定为已读取版本中的服务端接口和字段，后续官方更新仍需重新核对。
-
-## 官方文档差异
-
-- 消息类型概览的枚举表落后于 2026-10-28 更新；按单聊／群聊发送接口支持 msg_type=8。
+- 单聊／群聊发送接口支持图文卡片 msg_type=8。
 - 子频道列表／机器人频道列表的字段表有 channels/guilds 包装名称，但响应示例是顶层数组；现有 Vec 返回按数组示例实现。
 - 部分群 GET 分页页将 cursor/limit 标为请求体，成员示例则使用 URL 查询。SDK 为两种形式分别提供入口，不混发。
 - 文本交互页声明新版 qqbot-at-everyone 标签也适用于文字子频道；全体提及权限和配额按各场景分别处理。
 
-较早频道专题的撤回、表态、论坛、音频及成员进出通知已补充专用 Rust 事件类型，未知字段保留在 extra；当前自动生成文档中的 22 个事件页面也均有对应类型化入口。
+频道撤回、表态、论坛、音频及成员进出通知提供专用 Rust 事件类型，未知字段保留在 `extra`。
+
+---
+
+📚 [回到开发手册](DEVELOPMENT.md) · 🌸 [查看项目介绍](../README.md)

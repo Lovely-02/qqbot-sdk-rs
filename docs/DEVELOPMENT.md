@@ -1,112 +1,58 @@
-# qqbot-sdk-rs 开发手册 🌸
+# 开发手册：小助手的冒险指南 🌸
 
-欢迎来到小小的 QQ Bot 魔法工房！这里把 SDK 按真实开发流程拆成几本轻量小册子，查接口时不用在一整面长文里迷路啦。✨
+欢迎来到 QQ Bot 魔法工房！选好要做的事情，再翻对应的小册子：安装、字段、完整示例和运行边界都放在这里啦。📚
 
-本项目的字段、路径、消息类型和能力限制，以 [QQ 机器人官方开发文档](https://bot.q.qq.com/wiki/develop/api-v2/) 为准。
+## 从哪里开始？🧭
 
-## 阅读地图 🗺️
+1. 🪄 第一次接入：读 [起步与鉴权](01-getting-started.md)，准备凭据、环境变量和运行模式。
+2. 💌 先发出消息：读 [消息与 Segment](02-messages.md)，选择单聊、群聊或频道目标。
+3. 📡 需要自动回复：读 [事件与网关](06-events.md)，配置平台权限与接入方式。
+4. 🍵 准备长期运行：读 [工程与排错](07-operations.md)，理解日志、错误与限频。
+5. 🍡 使用 TypeScript：直接从 [Node.js 指南](13-nodejs.md) 开始。
 
-| 小册子                                   | 适合什么时候打开     | 内容                                     |
-| ---------------------------------------- | -------------------- | ---------------------------------------- |
-| [01 起步与鉴权](01-getting-started.md)   | 第一次接入项目       | 安装、客户端、AccessToken、ID 说明       |
-| [02 消息与 Segment](02-messages.md)      | 要发消息或处理富媒体 | 消息段、引用、被动回复、上传流程         |
-| [03 好友与单聊](03-user.md)              | 给好友发消息         | 用户查询、单聊消息、流式消息             |
-| [04 群聊](04-group.md)                   | 开发群机器人         | 群消息、成员、黑名单、审批策略           |
-| [05 频道与频道私信](05-guild-channel.md) | 开发频道功能         | 频道、子频道、管理、Reaction、日程、私信 |
-| [06 事件与网关](06-events.md)            | 接收事件并自动回复   | Intents、强类型事件、WebSocket、Webhook  |
-| [07 工程与排错](07-operations.md)        | 准备测试或上线       | 日志、错误、限频、安全与检查清单         |
-| [08 Bot 工具箱](08-bot-tools.md)         | 配置机器人交互能力   | Bot 信息、面板、菜单、互动回调、跳转链接 |
+## 完整小书架 📖
 
-## 三分钟认识 SDK 🍬
+| 手册                                       | 你能找到什么                                              |
+| ------------------------------------------ | --------------------------------------------------------- |
+| [01 起步与鉴权](01-getting-started.md)     | 安装、凭据、模式、客户端配置与 ID                         |
+| [02 消息与 Segment](02-messages.md)        | 消息段、回复、序号、键盘、富媒体与原生字段                |
+| [03 好友与单聊](03-user.md)                | 用户资料、单聊消息、撤回、上传与流式回答                  |
+| [04 群聊](04-group.md)                     | 群消息、群标识、成员、分页、审批与黑名单                  |
+| [05 频道与频道私信](05-guild-channel.md)   | 频道层级、成员角色、帖子、Reaction、日程与私信            |
+| [06 事件与网关](06-events.md)              | 订阅、主题、Intents、WebSocket、Webhook 与错误策略        |
+| [07 工程与排错](07-operations.md)          | 日志、错误类型、额度、重试、构建与检查                    |
+| [08 Bot 工具箱](08-bot-tools.md)           | Bot 资料、菜单、面板、互动回调与分享链接                  |
+| [09 素材与卡片](09-materials-and-cards.md) | 图片素材、分页、引用、图文卡片与全体提及                  |
+| [10 官方接口地图](10-api-coverage.md)      | HTTP 方法、路径与实现位置                                 |
+| [11 字段小图鉴](11-field-coverage.md)      | 类型字段、官方来源与数据边界                              |
+| [12 运行规则卡](12-runtime-behavior.md)    | 回复时效、序号缓存、限频、上传与连接恢复                  |
+| [13 Node.js 指南](13-nodejs.md)            | 安装认证、TypeScript、主题、生命周期、管理 API 与 Webhook |
 
-2026 年 10 月新增能力见 [09 素材与卡片](09-materials-and-cards.md)，完整接口核对清单见 [10 官方接口覆盖表](10-api-coverage.md)，字段与验证记录见 [11 字段覆盖与验证](11-field-coverage.md)。
+## 会话入口小抄 🪪
 
-本次官方文档复核的范围、回复去重注意事项及高层封装缺口见 [12 官方文档复核](12-official-recheck.md)。
+| 入口              | 使用的标识            | 负责的场景           |
+| ----------------- | --------------------- | -------------------- |
+| `bot.user(id)`    | `user_openid`         | 单聊发送、查询与撤回 |
+| `bot.group(id)`   | `group_openid`        | 群消息与成员查询     |
+| `bot.channel(id)` | `channel_id`          | 子频道消息与内容管理 |
+| `bot.direct(id)`  | 私信会话的 `guild_id` | 频道私信             |
+| `bot.guild(id)`   | 大频道的 `guild_id`   | 频道、角色与成员     |
+| `bot.api()`       | 按接口传入            | 完整底层 HTTP API    |
 
-```rust,no_run
-use qqbot_sdk_rs::{segment, Bot, Result};
+🌸 `union_openid` 与 `union_group_openid` 是跨应用关联标识，不替代实际调用使用的用户／群 OpenID。不同 Bot 的 OpenID 也不能直接混用。
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET", qqbot_sdk_rs::BotMode::PublicWebSocket)?;
+## 写示例之前的小约定 🎀
 
-    bot.user("USER_OPENID")
-        .send(segment::markdown("**今天也要加油**"))
-        .await?;
+- 示例中的凭据、ID 和 URL 都要替换成自己的值；密钥放环境变量或密钥服务。
+- Rust 代码标记为 `no_run`，表示可以编译但需要真实配置后才能运行。
+- 一次选择一种事件接入方式；注册处理器不会自动申请平台权限。
+- 事件处理器中优先 `event.reply(...)`，主动消息使用会话实体的 `send(...)`。
+- 单聊被动回复 **60 分钟、最多 4 次**；群聊 **5 分钟、最多 5 次**。序号缓存不额外保留余量。
+- `segment::reply(...)` 是引用展示，`reply_to(...)` 或事件 `reply` 才用于设置被动回复。
+- Rust 与 Node.js 的入口和错误传播存在差异，分别以对应章节为准。
 
-    Ok(())
-}
-```
+## 平台规则与运行边界 🍀
 
-常用入口可以这样记：
+字段、路径、消息能力和权限以 [QQ 官方 API v2](https://bot.q.qq.com/wiki/develop/api-v2/) 为来源，当前 SDK 的本地行为见 [运行规则卡](12-runtime-behavior.md)。本地编译与测试通过不代表已经获得线上权限；遇到平台错误时保留错误码、HTTP 状态和链路 ID。
 
-| 入口                   | 负责什么             |
-| ---------------------- | -------------------- |
-| `bot.user(id)`         | 单聊用户会话         |
-| `bot.group(id)`        | 群会话               |
-| `bot.channel(id)`      | 频道子频道会话       |
-| `bot.direct(guild_id)` | 频道私信会话         |
-| `bot.guild(id)`        | 频道管理会话         |
-| `bot.api().messages()` | 所有消息 API         |
-| `bot.api().users()`    | 用户与流式消息 API   |
-| `bot.api().groups()`   | 群管理 API           |
-| `bot.api().guilds()`   | 频道和频道成员 API   |
-| `bot.api().channels()` | 子频道内容与管理 API |
-
-创建 Bot 时，WebSocket 需要选择公域或私域；Webhook 订阅范围由开放平台配置，详见 [01 起步与鉴权](01-getting-started.md)：
-
-```rust,no_run
-use qqbot_sdk_rs::{Bot, BotMode, Result};
-
-#[tokio::main]
-async fn main() -> Result<()> {
-    let bot = Bot::new("APP_ID", "APP_SECRET", BotMode::PrivateWebSocket)?;
-    println!("当前模式：{:?}", bot.mode());
-    Ok(())
-}
-```
-
-## ID 小抄 🪪
-
-| 名称            | 含义                         | 常见用途                   |
-| --------------- | ---------------------------- | -------------------------- |
-| `APP_ID`        | 机器人应用 ID                | 创建 `Bot`                 |
-| `APP_SECRET`    | 机器人密钥                   | 获取 AccessToken           |
-| `USER_OPENID`   | 当前 Bot 体系下的用户 OpenID | 单聊、用户查询             |
-| `GROUP_OPENID`  | 当前 Bot 体系下的群 OpenID   | 群消息、群管理             |
-| `GUILD_ID`      | 大频道 ID                    | 频道、角色、成员           |
-| `CHANNEL_ID`    | 频道中的子频道 ID            | 子频道消息、帖子、Reaction |
-| `MEMBER_OPENID` | 群成员 OpenID                | 群成员查询与管理           |
-| `DM_GUILD_ID`   | 频道私信会话的 guild_id      | 频道私信消息               |
-
-好友 OpenID、群 OpenID、频道 ID 是三套不同标识，不能混用。不同 Bot 获取到的 OpenID 也可能不同，这是官方的身份隔离设计，不是 bug 哦。🌙
-
-## 约定与风格 🎀
-
-- 消息优先使用 `segment::*`，复杂场景再直接构造 `MessageRequest`。
-- 收到事件后，优先调用 `event.reply(...)`；主动消息使用 `event.group()?.send(...)`、`bot.user(...).send(...)` 等实体方法。
-- `segment::reply(message_id)` 表示引用展示；被动回复请使用事件的 `reply()` 或 `segment::reply_to(...)`。
-- 频道内嵌格式（`at`、`face`、`link`）不会被自动发送到单聊和群聊。
-- 本手册只记录当前实现和 QQ 官方 API v2 的用法。
-
-## 官方资料 📚
-
-- [QQ 机器人 API v2 总览](https://bot.q.qq.com/wiki/develop/api-v2/)
-- [消息类型](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/type/overview.html)
-- [富媒体消息](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/rich-media.html)
-- [事件订阅与网关](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/channel/message/event.html)
-
-## 小册子导航 📖
-
-想按功能查接口？直接跳到对应章节就好啦：
-
-- [起步与鉴权](01-getting-started.md)
-- [消息与 Segment](02-messages.md)
-- [好友与单聊](03-user.md)
-- [群聊](04-group.md)
-- [频道与频道私信](05-guild-channel.md)
-- [事件与网关](06-events.md)
-- [工程与排错](07-operations.md)
-- [Bot 工具箱](08-bot-tools.md)
-
-准备好之后，先从 [01 起步与鉴权](01-getting-started.md) 开始，樱花列车马上发车！🚂🌸
+🌸 [回到项目介绍](../README.md)

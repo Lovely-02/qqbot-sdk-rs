@@ -1,5 +1,7 @@
 # 07 工程与排错：让小助手稳稳运行 🛠️
 
+运行中的小助手也需要补给站：日志帮你看现场，错误类型帮你找原因，限频和重试则负责控制出发节奏。🍵
+
 这一章放上线前最容易被忽略的工程细节：日志、错误、限频、Webhook 安全和发布检查。
 
 ## 日志配置 🪵
@@ -61,7 +63,7 @@ cargo run
 | `SdkError::Api`              | QQ 返回业务错误        | 记录 `status`、`code`、`message`，按官方错误码处理 |
 | `SdkError::Auth`             | Token 或密钥问题       | 检查 AppID、AppSecret、Bot Secret                  |
 | `SdkError::InvalidInput`     | 本地参数不符合官方规则 | 修正 ID、消息类型或被动回复字段                    |
-| `SdkError::RateLimited`      | 本地限频器拒绝请求     | 降低主动消息频率或调整 `bot_qps`                   |
+| `SdkError::RateLimited`      | 本地限频器拒绝请求     | 降低请求频率或调整 `bot_qps`                       |
 | `SdkError::WebSocket`        | 网关连接或协议异常     | 检查网络，使用自动重连                             |
 | `SdkError::InvalidSignature` | Webhook 签名不合法     | 拒绝请求并检查验签参数                             |
 
@@ -81,11 +83,13 @@ async fn send(bot: &Bot) -> Result<()> {
 }
 ```
 
-## 限频与重试 ⏱️
+## 限频与重试 ⏱️ 🌸
 
 `SdkError::Api` 还保留响应体 `trace_id`（缺失时使用响应头 `X-Tps-trace-ID`）和 `data`。频道消息进入异步审核时，可从 `data.message_audit.audit_id` 关联审核事件。HTTP 200/201/202 响应中若含非零 `err_code` 或 `code`，SDK 同样返回业务错误，不会将其当作已发送的消息。只关心原有字段时可使用 `SdkError::Api { status, code, message, .. }` 匹配。
 
-`ClientConfig::mode` 固定 Bot 的公域/私域和事件接入方式；`ClientConfig::bot_qps` 控制 SDK 本地 Bot 维度主动请求频率，默认值为每秒 5 次。SDK 另外按官方已明确标注的接口、HTTP 方法施加 QPS/QPM 固定窗口限制，同一客户端的克隆共享配额，例如群信息 30 QPM、自定义菜单更新 5 QPM；超限在发请求前返回 `RateLimited`。这些本地计数不能替代服务端跨实例统计、管理员权限或自然日配额，遇到官方 429 或业务错误时仍需按响应退避。分片上传的瞬时错误按服务端配置有限重试，超出操作时间预算返回 `SdkError::Timeout`。
+`ClientConfig::mode` 固定 Bot 的公域/私域和事件接入方式；`ClientConfig::bot_qps` 控制所有 QQ API 请求共享的每秒限额，默认每秒 5 次，配置为 0 时按 1 处理。查询、删除和上传准备等请求同样计入；Token 获取和 COS 直传不计入。SDK 另外按官方已明确标注的接口、HTTP 方法施加 QPS/QPM 固定窗口限制，同一客户端的克隆共享配额，例如群信息 30 QPM、自定义菜单更新 5 QPM；超限在发请求前返回 `RateLimited`。全局额度与接口额度都通过检查后才一起扣减，接口限频失败不会消耗全局额度。本地限频器在后续请求时按窗口周期清理过期键，不启动后台任务；没有请求时不会主动清理。
+
+这些本地计数不能替代服务端跨实例统计、管理员权限或自然日配额，遇到官方 429 或业务错误时仍需按响应退避。分片上传的瞬时错误按服务端配置有限重试，超出操作时间预算返回 `SdkError::Timeout`。
 
 网关 `GatewayConfig` 提供 `reconnect_delay` 和 `auto_reconnect`：
 
@@ -108,6 +112,26 @@ let config = GatewayConfig {
 - 不在日志中打印 AppSecret、Bot Secret、AccessToken 或完整用户隐私字段。
 - 对重复事件使用 `event_id` 或业务幂等键去重。
 
+## 本地开发补给包 🛠️
+
+在仓库根目录运行 Rust 检查：
+
+```powershell
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+```
+
+Node.js 源码开发还需要安装依赖、构建原生模块和检查 TypeScript：
+
+```powershell
+npm ci --prefix packages/npm
+npm run build --prefix packages/npm
+npm run typecheck --prefix packages/npm
+```
+
+🍡 原生模块只适用于对应操作系统和 CPU 架构。安装认证、构建产物和运行方式见 [Node.js 指南](13-nodejs.md)；维护者的发布步骤见 [发布工房](../packages/npm/PUBLISHING.md)。
+
 ## 发布前检查 ✅
 
 在提交或发布前运行：
@@ -126,3 +150,7 @@ git diff --check
 - [QQ 机器人 API v2 总览](https://bot.q.qq.com/wiki/develop/api-v2/)
 - [错误码](https://bot.q.qq.com/wiki/develop/api-v2/openapi/error/error.html)
 - 发送频率和被动回复时效请以各消息接口页面的最新说明为准。
+
+---
+
+📚 [回到开发手册](DEVELOPMENT.md) · 🌸 [查看项目介绍](../README.md)

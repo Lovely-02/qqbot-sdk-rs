@@ -1,8 +1,10 @@
 # 05 频道与频道私信：在大频道里搭舞台 🎪
 
+频道是小助手的演出舞台：大频道、子频道和私信各有自己的门牌，先分清 ID，后面的管理与消息操作就顺手啦。🎪
+
 QQ 的频道体系分成三层：`Guild` 是大频道，`Channel` 是子频道，`Direct` 是频道私信会话。SDK 用三个会话实体把它们区分开，减少 ID 串线。
 
-## 三个入口怎么选？
+## 三个入口怎么选？ 🌸
 
 | 入口                      | ID                    | 主要用途                         |
 | ------------------------- | --------------------- | -------------------------------- |
@@ -106,3 +108,7 @@ async fn main() -> Result<()> {
 - [频道消息事件](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/channel/message/event.html)
 - [发送子频道消息](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/channel/message/send.html)
 - [频道管理 API](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/channel/manage/)
+
+---
+
+📚 [回到开发手册](DEVELOPMENT.md) · 🌸 [查看项目介绍](../README.md)

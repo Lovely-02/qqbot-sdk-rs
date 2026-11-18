@@ -1,8 +1,10 @@
 # 02 消息与 Segment：像拼积木一样发消息 🧩
 
+消息就像便当里的小配菜：先选会话，再组合文字、图片和 Markdown。遇到复杂字段时，也能直接打开原生请求的小抽屉。🍱
+
 这一章讲消息的统一入口。字段、消息类型和能力判断全部以 QQ 官方 API v2 为准。
 
-## `Sendable` 是什么？
+## `Sendable` 是什么？ 🌸
 
 `send`、`reply` 和 `MessageApi` 方法都接受 `impl Into<Sendable>`，因此可以直接传：
 
@@ -112,7 +114,9 @@ async fn main() -> Result<()> {
 - `event.reply(...)`：按事件上下文发送官方被动回复，会自动带上 `msg_id` 或 `event_id`。
 - `segment::reply_to(...)` / `segment::reply_event(...)`：需要手动构造回复请求时使用。
 
-同一条单聊／群聊消息需要多次回复时，SDK 会按“目标会话 + msg_id”自动分配递增的 `msg_seq`，同一客户端及其克隆、多个事件处理器和并发回复共享计数。显式传入的 `MessageRequest.msg_seq` 原样保留，并推进自动计数的上界；重试同一次发送时应显式使用原序号。自动分配的序号即使发送失败也不会回退；不同客户端实例、进程或重启后的去重由调用方协调。纯 event_id 回复不注入 msg_seq，raw 请求体仍完全由调用方控制。
+单聊被动回复有效期为 60 分钟，每条消息最多回复 4 次；群聊有效期为 5 分钟，每条消息最多回复 5 次。有效期从平台消息时间计算，实际权限、时效和次数由平台校验。
+
+同一条单聊／群聊消息需要多次回复时，SDK 会按“目标会话 + msg_id”自动分配递增的 `msg_seq`，同一客户端及其克隆、多个事件处理器和并发回复共享计数。显式传入的 `MessageRequest.msg_seq` 原样保留，并推进自动计数的上界；重试同一次发送时应显式使用原序号。自动分配的序号即使发送失败也不会回退；不同客户端实例、进程或重启后的去重由调用方协调。序号缓存从最近一次预约起，单聊保留 60 分钟、群聊保留 5 分钟，不额外延长缓存期限；缓存保留不会延长平台允许的回复时间。纯 event_id 回复不注入 msg_seq，raw 请求体仍完全由调用方控制。
 
 ```rust,no_run
 use qqbot_sdk_rs::{segment, Bot, Result};
@@ -179,7 +183,7 @@ async fn main() -> Result<()> {
 
 `segment::file(path)` 和 `segment::file_bytes(data)` 对应官方 `file_type=4`，只适用于单聊和群聊。
 
-## 输入状态通知 ⌨️
+## 输入状态通知 ⌨️ 🌸
 
 `segment::input_notify(input_type, input_second)` 会自动设置 `msg_type = 6`，用于 C2C 单聊输入状态。当前官方接口要求 `input_type=1`，持续时间为 1 到 60 秒；它不应与普通文本或其他消息类型混在同一请求中。
 
@@ -209,7 +213,7 @@ async fn main() -> Result<()> {
 }
 ```
 
-## 原生字段直传
+## 原生字段直传 🌸
 
 ```rust,no_run
 use qqbot_sdk_rs::{Bot, Result, segment};
@@ -237,3 +241,7 @@ async fn send_native(bot: &Bot) -> Result<()> {
 - [消息类型](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/type/overview.html)
 - [富媒体消息](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/rich-media.html)
 - [发送子频道消息](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/channel/message/send.html)
+
+---
+
+📚 [回到开发手册](DEVELOPMENT.md) · 🌸 [查看项目介绍](../README.md)
