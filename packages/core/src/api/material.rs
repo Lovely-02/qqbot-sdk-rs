@@ -25,33 +25,38 @@ impl ImageUploadRequest {
     /// # 错误
     /// 文件为空、超过 10 MiB、扩展名或 MIME 类型不受支持时返回 `SdkError::InvalidInput`。
     pub fn from_bytes(file_name: &str, content_type: &str, data: &[u8]) -> Result<Self> {
+        let file_size = u64::try_from(data.len())
+            .map_err(|_| SdkError::InvalidInput("图片大小超出范围".into()))?;
+        Self::validate_file(file_name, content_type, file_size)?;
         let request = Self {
             file_name: file_name.into(),
-            file_size: u64::try_from(data.len())
-                .map_err(|_| SdkError::InvalidInput("图片大小超出范围".into()))?,
+            file_size,
             content_type: content_type.into(),
             md5: hex::encode(Md5::digest(data)),
             sha1: hex::encode(sha1::Sha1::digest(data)),
         };
-        request.validate()?;
         Ok(request)
     }
 
-    fn validate(&self) -> Result<()> {
-        let extension = self
-            .file_name
+    fn validate_file(file_name: &str, content_type: &str, file_size: u64) -> Result<()> {
+        let extension = file_name
             .rsplit_once('.')
             .map(|(_, ext)| ext.to_ascii_lowercase());
         let valid_format = matches!(
-            (self.content_type.as_str(), extension.as_deref()),
+            (content_type, extension.as_deref()),
             ("image/png", Some("png"))
                 | ("image/jpeg", Some("jpg" | "jpeg"))
                 | ("image/gif", Some("gif"))
                 | ("image/webp", Some("webp"))
         );
-        if !valid_format || self.file_size == 0 || self.file_size > 10 * 1024 * 1024 {
+        if !valid_format || file_size == 0 || file_size > 10 * 1024 * 1024 {
             return Err(SdkError::InvalidInput("素材必须为非空且不超过 10 MiB 的 png/jpeg/gif/webp 图片，扩展名与 Content-Type 必须一致".into()));
         }
+        Ok(())
+    }
+
+    fn validate(&self) -> Result<()> {
+        Self::validate_file(&self.file_name, &self.content_type, self.file_size)?;
         if self.md5.len() != 32
             || !self.md5.bytes().all(|b| b.is_ascii_hexdigit())
             || self.sha1.len() != 40

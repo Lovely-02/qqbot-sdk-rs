@@ -16,7 +16,7 @@ use std::{
     },
 };
 use tokio::sync::RwLock;
-use tracing::{Instrument, debug, info, info_span};
+use tracing::{Instrument, debug, error, info, info_span};
 
 type HandlerFuture = BoxFuture<'static, Result<()>>;
 type HandlerFn = dyn Fn(EventEnvelope, Arc<QQBotClient>) -> HandlerFuture + Send + Sync;
@@ -426,17 +426,35 @@ impl ErasedHandler for ClosureHandler {
     }
 }
 
+/// 单个事件处理器失败后的分发策略。
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum DispatchErrorPolicy {
+    /// 立即返回错误，停止后续分发。
+    #[default]
+    Stop,
+    /// 记录错误并继续分发，最终返回第一个错误。
+    Continue,
+}
+
 /// 线程安全事件路由器。
 #[derive(Clone, Default)]
 pub struct EventRouter {
     handlers: Arc<RwLock<HandlerMap>>,
     named: Arc<RwLock<Vec<NamedHandler>>>,
+    error_policy: DispatchErrorPolicy,
 }
 
 impl EventRouter {
     /// 创建空路由器。
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// 配置此路由器的默认错误策略，也适用于网关与 Webhook 分发。
+    pub fn with_error_policy(mut self, policy: DispatchErrorPolicy) -> Self {
+        self.error_policy = policy;
+        self
     }
 
     /// 按官方名称、camelCase 别名或点分主题订阅事件。
@@ -564,8 +582,23 @@ impl EventRouter {
     /// 分发事件，按注册顺序执行。
     ///
     /// # 错误
-    /// 任一已注册处理器返回错误时，原样向上返回该错误。
+    /// 返回第一个处理器错误；默认立即停止，可通过 `with_error_policy` 配置继续分发。
     pub async fn dispatch(&self, envelope: EventEnvelope, client: Arc<QQBotClient>) -> Result<()> {
+        self.dispatch_with_policy(envelope, client, self.error_policy)
+            .await
+    }
+
+    /// 按指定错误策略分发事件；继续模式仍保留现有执行顺序。
+    ///
+    /// # 错误
+    /// 返回第一个处理器错误；继续模式会先执行其余匹配处理器。
+    pub async fn dispatch_with_policy(
+        &self,
+        envelope: EventEnvelope,
+        client: Arc<QQBotClient>,
+        policy: DispatchErrorPolicy,
+    ) -> Result<()> {
+        let mut first_error = None;
         let display_name = event_display_name(&envelope.name);
         if let Some(event_log) = incoming_event_log(&envelope) {
             info!(target: EVENT_LOG_TARGET, "{event_log}");
@@ -604,10 +637,13 @@ impl EventRouter {
             span_id
         );
         for handler in handlers {
-            handler
+            if let Err(error) = handler
                 .call(envelope.clone(), client.clone())
                 .instrument(span.clone())
-                .await?;
+                .await
+            {
+                Self::handle_dispatch_error(policy, &mut first_error, error)?;
+            }
         }
         // Bot 订阅同时适用于独立创建的网关路由器和 Webhook 路由器。
         let bot_router = client.event_router();
@@ -624,11 +660,14 @@ impl EventRouter {
                     self.off(handler.id).await;
                     bot_router.off(handler.id).await;
                 }
-                handler
+                if let Err(error) = handler
                     .handler
                     .call(envelope.clone(), client.clone())
                     .instrument(span.clone())
-                    .await?;
+                    .await
+                {
+                    Self::handle_dispatch_error(policy, &mut first_error, error)?;
+                }
             }
         }
         debug!(
@@ -636,6 +675,23 @@ impl EventRouter {
             event_name = %display_name,
             "事件处理完成（调试详情）"
         );
-        Ok(())
+        first_error.map_or(Ok(()), Err)
+    }
+
+    fn handle_dispatch_error(
+        policy: DispatchErrorPolicy,
+        first: &mut Option<SdkError>,
+        error: SdkError,
+    ) -> Result<()> {
+        match policy {
+            DispatchErrorPolicy::Stop => Err(error),
+            DispatchErrorPolicy::Continue => {
+                error!(target: EVENT_LOG_TARGET, %error, "事件处理器失败，继续分发");
+                if first.is_none() {
+                    *first = Some(error);
+                }
+                Ok(())
+            }
+        }
     }
 }

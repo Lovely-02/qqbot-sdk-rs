@@ -116,13 +116,18 @@ pub(crate) struct EndpointLimits {
 }
 
 impl EndpointLimits {
-    pub(crate) async fn acquire(&self, method: &Method, path: &str) -> Result<()> {
+    pub(crate) async fn acquire(
+        &self,
+        method: &Method,
+        path: &str,
+        global: &RateLimiter,
+    ) -> Result<()> {
         let Some((index, &(_, _, limit, seconds))) = RULES
             .iter()
             .enumerate()
             .find(|(_, rule)| method.as_str() == rule.0 && Self::matches(rule.1, path))
         else {
-            return Ok(());
+            return global.acquire("bot").await;
         };
         let limiter = self
             .limiters
@@ -131,7 +136,7 @@ impl EndpointLimits {
             .entry(index)
             .or_insert_with(|| RateLimiter::new(limit, Duration::from_secs(seconds)))
             .clone();
-        limiter.acquire("endpoint").await
+        global.acquire_pair(&limiter).await
     }
 
     fn matches(template: &str, path: &str) -> bool {

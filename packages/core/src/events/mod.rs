@@ -28,7 +28,9 @@ pub use guild::{
     GuildEvent, GuildMemberAdd, GuildMemberEvent, GuildMemberRemove, GuildMemberUpdate,
     GuildUpdate,
 };
-pub use handler::{Event, EventContext, EventEnvelope, EventHandler, EventRouter};
+pub use handler::{
+    DispatchErrorPolicy, Event, EventContext, EventEnvelope, EventHandler, EventRouter,
+};
 pub use interaction::{
     InteractionAuthorizeData, InteractionCreate, InteractionData, InteractionMessageScene,
     InteractionResolved,

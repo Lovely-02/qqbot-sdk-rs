@@ -46,3 +46,18 @@ fn material_entries_accept_official_timestamp_strings() {
         assert_eq!(page.images[0].expires_at, 1794932397);
     }
 }
+
+#[test]
+fn material_upload_rejects_invalid_files_and_preserves_hashes() {
+    use qqbot_sdk_core::ImageUploadRequest;
+    for (name, mime, data) in [
+        ("test.png", "image/png", Vec::new()),
+        ("test.jpg", "image/png", vec![1]),
+        ("test.png", "image/png", vec![0; 10 * 1024 * 1024 + 1]),
+    ] {
+        assert!(ImageUploadRequest::from_bytes(name, mime, &data).is_err());
+    }
+    let request = ImageUploadRequest::from_bytes("test.PNG", "image/png", b"abc").unwrap();
+    assert_eq!(request.md5, "900150983cd24fb0d6963f7d28e17f72");
+    assert_eq!(request.sha1, "a9993e364706816aba3e25717850c26c9cd0d89d");
+}

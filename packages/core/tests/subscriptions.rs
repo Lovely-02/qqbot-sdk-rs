@@ -196,3 +196,38 @@ async fn every_official_topic_matches_the_node_mapping_and_dispatches_once() {
         assert_eq!(count.load(Ordering::Relaxed), expected);
     }
 }
+
+#[tokio::test]
+async fn continue_policy_delivers_after_errors_and_preserves_once() {
+    use qqbot_sdk_core::events::DispatchErrorPolicy;
+    let bot = bot();
+    let router = EventRouter::new();
+    router
+        .on::<FriendAdd, _, _>(|_| async { Err(SdkError::InvalidInput("first".into())) })
+        .await;
+    let count = Arc::new(AtomicUsize::new(0));
+    let calls = count.clone();
+    bot.once("notice", move |_| {
+        let calls = calls.clone();
+        async move {
+            calls.fetch_add(1, Ordering::Relaxed);
+            Err(SdkError::InvalidInput("second".into()))
+        }
+    })
+    .await;
+    assert!(
+        router
+            .dispatch(envelope("FRIEND_ADD"), bot.clone())
+            .await
+            .is_err()
+    );
+    assert_eq!(count.load(Ordering::Relaxed), 0);
+    let router = router.with_error_policy(DispatchErrorPolicy::Continue);
+    for _ in 0..2 {
+        assert!(
+            matches!(router.dispatch(envelope("FRIEND_ADD"), bot.clone()).await,
+            Err(SdkError::InvalidInput(message)) if message == "first")
+        );
+    }
+    assert_eq!(count.load(Ordering::Relaxed), 1);
+}

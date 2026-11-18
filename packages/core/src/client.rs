@@ -92,7 +92,8 @@ pub struct ClientConfig {
     pub gateway_url: Option<String>,
     /// 单次 HTTP 请求，以及网关握手、Hello 和鉴权各阶段的超时。
     pub request_timeout: Duration,
-    /// 主动消息 QPS 限制。
+    /// 所有 QQ API 请求共享的每秒请求限额；不含 Token 获取和 COS 直传。
+    /// `0` 按 `1` 处理，接口自身的限额仍独立生效。
     pub bot_qps: u32,
 }
 
@@ -379,8 +380,9 @@ impl QQBotClient {
         B: Serialize + ?Sized,
         T: DeserializeOwned,
     {
-        self.limiter.acquire("bot").await?;
-        self.endpoint_limits.acquire(&method, path).await?;
+        self.endpoint_limits
+            .acquire(&method, path, &self.limiter)
+            .await?;
         let token = self.auth.token().await?;
         let trace_id = next_span_id();
         let span_id = next_span_id();
@@ -412,8 +414,9 @@ impl QQBotClient {
         T: DeserializeOwned,
         Q: Serialize + ?Sized,
     {
-        self.limiter.acquire("bot").await?;
-        self.endpoint_limits.acquire(&method, path).await?;
+        self.endpoint_limits
+            .acquire(&method, path, &self.limiter)
+            .await?;
         let token = self.auth.token().await?;
         let trace_id = next_span_id();
         let span_id = next_span_id();
@@ -443,8 +446,9 @@ impl QQBotClient {
     where
         T: DeserializeOwned,
     {
-        self.limiter.acquire("bot").await?;
-        self.endpoint_limits.acquire(&method, path).await?;
+        self.endpoint_limits
+            .acquire(&method, path, &self.limiter)
+            .await?;
         let token = self.auth.token().await?;
         let trace_id = next_span_id();
         let span_id = next_span_id();
