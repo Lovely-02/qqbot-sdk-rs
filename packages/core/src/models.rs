@@ -462,7 +462,7 @@ pub struct AccessTokenResponse {
     pub expires_in: u64,
 }
 
-fn deserialize_u64<'de, D>(deserializer: D) -> Result<u64, D::Error>
+pub(crate) fn deserialize_u64<'de, D>(deserializer: D) -> Result<u64, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -495,6 +495,13 @@ impl ApiErrorBody {
             .filter(|code| *code != 0)
             .or_else(|| self.code.filter(|code| *code != 0))
     }
+}
+
+pub(crate) fn deserialize_i64<'de, D>(deserializer: D) -> Result<i64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    deserialize_opt_i64(deserializer)?.ok_or_else(|| D::Error::custom("必须为整数或整数字符串"))
 }
 
 fn deserialize_opt_i64<'de, D>(deserializer: D) -> Result<Option<i64>, D::Error>

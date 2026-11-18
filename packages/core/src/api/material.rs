@@ -97,7 +97,9 @@ pub struct MaterialImageEntry {
     pub url: String,
     pub file_name: String,
     pub preview_url: String,
+    #[serde(deserialize_with = "crate::models::deserialize_i64")]
     pub created_at: i64,
+    #[serde(deserialize_with = "crate::models::deserialize_i64")]
     pub expires_at: i64,
 }
 
@@ -106,6 +108,8 @@ pub struct MaterialImageEntry {
 pub struct MaterialImagePage {
     pub images: Vec<MaterialImageEntry>,
     pub next_cursor: String,
+    // 实际接口将 total 编码为十进制字符串，同时兼容整数响应。
+    #[serde(deserialize_with = "crate::models::deserialize_u64")]
     pub total: u64,
 }
 
