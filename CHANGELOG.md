@@ -11,6 +11,19 @@
 - 补充消息／审核事件字段，保留业务错误链路和异步审核数据。
 - 同步官方接口、字段覆盖清单与示例。
 
+## [0.3.2](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.3.1...qqbot-sdk-rs-v0.3.2) (2026-11-18)
+
+
+### 🐛 Bug 修复
+
+* **core:** 优化限频配额、素材校验和事件错误隔离 ([4bbe745](https://github.com/Lovely-02/qqbot-sdk-rs/commit/4bbe745dd9c35bff87d34d3eb77472bcd52b08b1))
+* **core:** 兼容素材响应中的数字字符串 ([e89d523](https://github.com/Lovely-02/qqbot-sdk-rs/commit/e89d523d50fa2c19fa13b74199ff149beb4d606e))
+
+
+### 📝 文档
+
+* 修缮文档 ([007362b](https://github.com/Lovely-02/qqbot-sdk-rs/commit/007362b8614564bb3f824e34b8c46c6284506166))
+
 ## [0.3.1](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.3.0...qqbot-sdk-rs-v0.3.1) (2026-11-17)
 
 
