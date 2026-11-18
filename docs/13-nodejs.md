@@ -133,7 +133,7 @@ bot.on('system.resumed', () => console.log('会话已恢复'))
 - 事件遵循 Node EventEmitter 语义，异步处理器可以并发执行；Promise 拒绝和同步处理器异常会转交 `error` 事件，请注册错误处理器。
 - 主动发送受 QQ 平台权限和限频规则约束。绑定同时提供消息收发、管理 API、WebSocket 与 Webhook，具体入口见下文。
 
-自动发布采用 Release Please + GitHub Actions，先构建五个平台的原生二进制，再发布到 GitHub Packages。首次配置、日常发版和失败重试见 [npm 发布流程](../packages/npm/PUBLISHING.md)。本地 `npm pack` 默认仅包含已经构建的平台文件。
+自动发布采用 Release Please + GitHub Actions。工作流先构建并发布五个平台的原生子包，再将主包发布到 GitHub Packages。安装主包时，npm 会选择与当前环境匹配的原生子包。首次配置、日常发版和失败重试见 [npm 发布流程](../packages/npm/PUBLISHING.md)。
 
 ### 完整 HTTP API 与管理能力 🪄
 

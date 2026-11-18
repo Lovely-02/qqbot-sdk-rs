@@ -5,3 +5,4 @@
 /native.d.ts
 /*.tgz
 /dist
+/release-packages/

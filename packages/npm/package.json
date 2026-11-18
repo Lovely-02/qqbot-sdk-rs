@@ -1,6 +1,7 @@
 {
   "name": "@lovely-02/qqbot-sdk-js",
   "version": "0.3.2",
+  "private": true,
   "description": "Node.js native bindings for qqbot-sdk-rs",
   "license": "MIT",
   "main": "dist/index.js",
@@ -27,6 +28,7 @@
     "test:events": "tsx scripts/check-events.ts",
     "prepack": "npm run build:ts && tsx scripts/check-package.ts",
     "check:release": "tsx scripts/check-package.ts --all",
+    "pack:release": "npm run build:ts && tsx scripts/check-package.ts --pack",
     "check:versions": "tsx scripts/check-versions.ts",
     "example": "tsx examples/echo.ts"
   },

@@ -210,23 +210,31 @@ jobs:
           pattern: native-*
           merge-multiple: true
           path: packages/npm
-      - name: 🛠️ 编译 TypeScript 与类型声明
-        run: npm run build:ts
-      - name: ✅ 校验多平台产物与发布版本
+      - name: 📦 校验版本并打包 npm 发行包
         run: |
           npm run check:versions
-          npm run check:release
+          npm run pack:release
         env:
           RELEASE_TAG: ${{ needs.release.outputs.tag_name }}
-      - name: 📦 打包 npm 发行包
-        run: npm pack
       - name: 💾 保存 npm 包构建产物
         uses: actions/upload-artifact@v4
         with:
           name: npm-package
-          path: packages/npm/*.tgz
+          path: packages/npm/release-packages/*.tgz
           if-no-files-found: error
       - name: 📤 发布 npm 包
-        run: npm publish ./*.tgz --registry=https://npm.pkg.github.com
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          registry=https://npm.pkg.github.com
+          for archive in ./release-packages/lovely-02-qqbot-sdk-js-*"-$version.tgz"; do
+            name=$(tar -xOf "$archive" package/package.json | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).name")
+            published=$(npm view "$name@$version" version --registry="$registry") || published=''
+            if [[ "$published" != "$version" ]]; then
+              npm publish "$archive" --registry="$registry"
+            fi
+          done
+          npm publish "./release-packages/lovely-02-qqbot-sdk-js-$version.tgz" --registry="$registry"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

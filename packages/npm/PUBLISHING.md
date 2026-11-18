@@ -2,7 +2,7 @@
 
 本项目使用 Release Please 管理统一版本，并在发布前构建五个平台的原生模块。npm 包名为 `@lovely-02/qqbot-sdk-js`。
 
-发行产物仅为 crates.io 上的 Cargo 包和 GitHub Packages 上的 npm 包。原生 `.node` 文件包含在 npm 包内，不作为独立二进制或 GitHub Release 附件发布。工作流中的 `native-*` artifacts 仅用于构建 job 之间传递文件。
+发行产物仅为 crates.io 上的 Cargo 包和 GitHub Packages 上的 npm 包。每个原生 `.node` 文件随对应的平台子包发布。工作流中的 `native-*` artifacts 用于在构建和发布 job 之间传递文件。
 
 ## 自动发布链路 📦
 
@@ -10,7 +10,7 @@
 2. `.github/workflows/release.yml` 运行 Release Please，创建统一版本 PR，更新 core、Rust 入口、Node.js 绑定、npm 包、全部本地包锁文件及根目录 VERSION、CHANGELOG 和 manifest。
 3. 合并版本 PR 后，Release Please 创建 `qqbot-sdk-rs-vX.Y.Z` 标签和 GitHub Release。
 4. 同一次工作流按标签检出源码，在 Windows、Linux 和 macOS runner 上构建原生模块。
-5. Rust 发布 job 先发布共享的 `qqbot-sdk-core`，再发布同一标签的 `qqbot-sdk-rs` 到 crates.io；npm 发布 job 汇总所有二进制，检查统一版本，执行类型检查与 `npm pack`，保存 `npm-package` artifact，然后通过 GitHub Packages 发布。两个仓库的发布不是原子操作，单边失败时可单独重试。
+5. Rust 发布 job 先发布共享的 `qqbot-sdk-core`，再发布同一标签的 `qqbot-sdk-rs` 到 crates.io。npm 发布 job 检查统一版本，将主包和五个平台子包保存到 `npm-package` artifact，随后通过 GitHub Packages 先发布平台子包，再发布主包。两个仓库可以分别重试。
 
 发布步骤直接依赖 Release Please 的输出，不依赖 GITHUB_TOKEN 创建标签后再次触发工作流。
 
@@ -32,7 +32,7 @@ Rust SDK、Node.js 绑定 crate 和 npm 包共用版本号，统一版本由 `VE
 | macOS        | Intel x64           | `qqbot-sdk.darwin-x64.node`      |
 | macOS        | Apple Silicon arm64 | `qqbot-sdk.darwin-arm64.node`    |
 
-所有平台二进制放在同一个 npm 包中，由 napi-rs 生成的加载器选择本机文件；用户安装时无需 Rust。包体积相应包含五份二进制。Linux x64 使用 Ubuntu 22.04，arm64 使用 Ubuntu 24.04 构建，运行环境需要对应或更新的 glibc；当前不提供 Alpine/musl、Windows arm64 或源码安装回退。
+主包通过 `optionalDependencies` 引用同版本的平台子包，例如 `@lovely-02/qqbot-sdk-js-win32-x64-msvc`。npm 根据 `os`、`cpu` 和 Linux 的 `libc` 选择平台子包，每个子包包含一份原生二进制。安装时使用默认的可选依赖设置即可，无需 Rust。Linux x64 使用 Ubuntu 22.04，arm64 使用 Ubuntu 24.04 构建，运行环境需要对应或更新的 glibc。当前支持范围见上表。
 
 ## 首次配置 📦
 
@@ -62,9 +62,9 @@ npm run typecheck
 npm pack --dry-run
 ```
 
-`npm run build` 先编译原生模块，再将 TypeScript 封装编译到 `dist/` 并自动生成声明文件。发布 job 下载原生构建产物后运行 `npm run build:ts`；`npm run typecheck` 严格检查源码、示例和发布脚本的类型。npm 包包含编译后的 `dist/` 和原生文件，用户不需要 TypeScript 构建环境。
+`npm run build` 编译本机原生模块和 TypeScript 封装，并生成声明文件。`npm run typecheck` 检查源码、示例和发布脚本。普通 `npm pack` 用于本地验证，包含当前已构建的原生文件。对外发布使用下文生成的发行包。
 
-`prepack` 会重新编译 TypeScript，并拒绝缺少加载器、类型声明或全部原生二进制的包。发布 job 额外执行 `npm run check:release`，强制要求五个平台文件齐全，且标签必须等于 `qqbot-sdk-rs-v` 加 `package.json` 版本号。发布前同时运行 `check:versions` 校验 Rust、npm、manifest 和锁文件。
+五个平台产物汇总后，使用 `npm run pack:release` 在 `release-packages/` 生成六个发行包。脚本编译 TypeScript，校验原生文件和发布标签，并从主包版本生成所有平台子包的版本和依赖声明。发布前运行 `check:versions` 校验 Rust、npm、manifest 和锁文件。
 
 正常发布只需合并统一版本 PR，不手动执行 `npm version` 或单独修改 manifest。不要把打包产物、原生二进制或凭据提交到仓库。
 
@@ -73,7 +73,7 @@ npm pack --dry-run
 如果发布步骤失败且目标仓库尚未发布该版本：GitHub Actions → 🚀 统一发布 → Run workflow，选择 `main`，在 `tag` 中填写已有的统一发布标签，例如 `qqbot-sdk-rs-vX.Y.Z`。`target` 选择 `npm` 只重试 npm、`rust` 只重试 crates.io、`both` 重试两边。工作流会从该标签重新构建并发布，不会创建新版本 PR。已在某一仓库发布成功的版本不必重试该仓库。旧标签若不包含 Node.js 绑定，不能用于 npm 首发。
 
 - Rust core 已发布而 Rust 入口失败：手动重试时选择 `target=rust`，勾选 `skip-core`，继续发布 Rust 入口；正常发版保持该选项关闭。
-- 包版本已存在：npm 禁止覆盖相同版本。如果上次其实已经发布成功，则无需重试；有代码变更时发布新版本。
+- 平台子包部分发布成功：重试会跳过已发布的同版本子包，发布剩余子包后再发布主包。如果主包已发布，有代码变更时需要发布新版本。
 - 身份或权限错误：检查工作流的 `packages: write` 和包的仓库访问权限。
 - 构建失败：修复源码或构建配置并发布新版本；手动重试仍使用标签处的源码，不能包含标签之后的修复。
 - 缺少二进制：检查五个平台的 build job 和 `native-*` artifacts；只有全部成功后才进入发布步骤。
