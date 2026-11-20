@@ -6,7 +6,6 @@ rust-version = "1.88"
 description = "轻巧、异步的 QQ 官方机器人 SDK：鉴权、消息、事件、群与频道管理"
 license = "MIT"
 repository = "https://github.com/Lovely-02/qqbot-sdk-rs"
-homepage = "https://github.com/Lovely-02/qqbot-sdk-rs"
 documentation = "https://docs.rs/qqbot-sdk-rs"
 readme = "README.md"
 keywords = ["qq", "qqbot", "bot", "sdk", "async"]
