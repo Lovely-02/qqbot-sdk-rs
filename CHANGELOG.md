@@ -11,6 +11,14 @@
 - 补充消息／审核事件字段，保留业务错误链路和异步审核数据。
 - 同步官方接口、字段覆盖清单与示例。
 
+## [0.3.3](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.3.2...qqbot-sdk-rs-v0.3.3) (2026-11-20)
+
+
+### 🐛 Bug 修复
+
+* **core:** 同步群消息被动回复规则 ([778b627](https://github.com/Lovely-02/qqbot-sdk-rs/commit/778b627c1366d26076a96b1b4e4a0849d240e093))
+* **npm:** 将原生二进制拆分到平台子包 ([da7447c](https://github.com/Lovely-02/qqbot-sdk-rs/commit/da7447ca4e49a73188f762361e6dba09c7eb721c))
+
 ## [0.3.2](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.3.1...qqbot-sdk-rs-v0.3.2) (2026-11-18)
 
 
