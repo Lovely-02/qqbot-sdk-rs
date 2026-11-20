@@ -38,6 +38,9 @@ impl<'a> MessageApi<'a> {
 
     /// 回复单聊事件，要求携带 `msg_id` 或 `event_id`。
     ///
+    /// 传入群消息的 `msg_id` 可私聊回复原发送者。目标用户必须与机器人为好友，
+    /// 并使用发送者的 `user_openid`。此时有效期和回复次数按群消息规则计算。
+    ///
     /// # 错误
     /// 消息段无效、请求字段组合不合法时返回 `SdkError::InvalidInput`；发送或上传失败时返回 HTTP、鉴权、序列化或平台业务错误。
     pub async fn reply_c2c(
@@ -389,7 +392,7 @@ impl<'a> MessageApi<'a> {
             request.msg_seq = Some(
                 self.client
                     .reply_sequences
-                    .reserve(&target.path(), message_id, request.msg_seq)
+                    .reserve(message_id, request.msg_seq)
                     .await?,
             );
         }

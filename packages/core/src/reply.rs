@@ -9,47 +9,34 @@ pub(crate) struct ReplySequences {
 
 #[derive(Default)]
 struct SequenceState {
-    entries: HashMap<(String, String), Entry>,
+    entries: HashMap<String, Entry>,
     last_cleanup: Option<Instant>,
 }
 
 struct Entry {
     highest: u32,
     touched: Instant,
-    retention: Duration,
 }
 
+const RETENTION: Duration = Duration::from_secs(60 * 60);
+
 impl ReplySequences {
-    pub(crate) async fn reserve(
-        &self,
-        path: &str,
-        message_id: &str,
-        explicit: Option<u32>,
-    ) -> Result<u32> {
+    pub(crate) async fn reserve(&self, message_id: &str, explicit: Option<u32>) -> Result<u32> {
         let mut state = self.state.lock().await;
         let now = Instant::now();
-        // 单聊回复序号保留 60 分钟，群聊保留 5 分钟。
         if state
             .last_cleanup
             .is_none_or(|last| now.duration_since(last) >= Duration::from_secs(60))
         {
             state
                 .entries
-                .retain(|_, entry| now.duration_since(entry.touched) < entry.retention);
+                .retain(|_, entry| now.duration_since(entry.touched) < RETENTION);
             state.last_cleanup = Some(now);
         }
-        let entry = state
-            .entries
-            .entry((path.into(), message_id.into()))
-            .or_insert(Entry {
-                highest: 0,
-                touched: now,
-                retention: Duration::from_secs(if path.starts_with("/v2/users/") {
-                    60 * 60
-                } else {
-                    5 * 60
-                }),
-            });
+        let entry = state.entries.entry(message_id.into()).or_insert(Entry {
+            highest: 0,
+            touched: now,
+        });
         let sequence = match explicit {
             Some(sequence) => sequence,
             None => entry.highest.checked_add(1).ok_or_else(|| {
@@ -68,41 +55,23 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn c2c_and_group_sequences_expire_with_their_respective_windows() {
+    async fn message_sequence_survives_the_previous_group_window() {
         let sequences = ReplySequences::default();
-        let c2c = "/v2/users/user/messages";
-        let group = "/v2/groups/group/messages";
-        assert_eq!(sequences.reserve(c2c, "message", None).await.unwrap(), 1);
-        assert_eq!(sequences.reserve(group, "message", None).await.unwrap(), 1);
+        assert_eq!(sequences.reserve("message", None).await.unwrap(), 1);
         {
             let mut state = sequences.state.lock().await;
-            let c2c_entry = state
-                .entries
-                .get_mut(&(c2c.into(), "message".into()))
-                .unwrap();
-            assert_eq!(c2c_entry.retention, Duration::from_secs(60 * 60));
-            c2c_entry.touched -= Duration::from_secs(59 * 60);
-            let group_entry = state
-                .entries
-                .get_mut(&(group.into(), "message".into()))
-                .unwrap();
-            assert_eq!(group_entry.retention, Duration::from_secs(5 * 60));
-            group_entry.touched -= Duration::from_secs(5 * 60);
+            state.entries.get_mut("message").unwrap().touched -= Duration::from_secs(59 * 60);
             state.last_cleanup = None;
         }
-        assert_eq!(sequences.reserve(c2c, "message", None).await.unwrap(), 2);
-        assert_eq!(sequences.reserve(group, "message", None).await.unwrap(), 1);
-        assert_eq!(sequences.reserve(c2c, "message", Some(4)).await.unwrap(), 4);
-        assert_eq!(sequences.reserve(c2c, "message", None).await.unwrap(), 5);
+        assert_eq!(sequences.reserve("message", None).await.unwrap(), 2);
+        assert_eq!(sequences.reserve("other", None).await.unwrap(), 1);
+        assert_eq!(sequences.reserve("message", Some(4)).await.unwrap(), 4);
+        assert_eq!(sequences.reserve("message", None).await.unwrap(), 5);
         {
             let mut state = sequences.state.lock().await;
-            state
-                .entries
-                .get_mut(&(c2c.into(), "message".into()))
-                .unwrap()
-                .touched -= Duration::from_secs(60 * 60);
+            state.entries.get_mut("message").unwrap().touched -= RETENTION;
             state.last_cleanup = None;
         }
-        assert_eq!(sequences.reserve(c2c, "message", None).await.unwrap(), 1);
+        assert_eq!(sequences.reserve("message", None).await.unwrap(), 1);
     }
 }
