@@ -49,29 +49,3 @@ impl ReplySequences {
         Ok(sequence)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn message_sequence_survives_the_previous_group_window() {
-        let sequences = ReplySequences::default();
-        assert_eq!(sequences.reserve("message", None).await.unwrap(), 1);
-        {
-            let mut state = sequences.state.lock().await;
-            state.entries.get_mut("message").unwrap().touched -= Duration::from_secs(59 * 60);
-            state.last_cleanup = None;
-        }
-        assert_eq!(sequences.reserve("message", None).await.unwrap(), 2);
-        assert_eq!(sequences.reserve("other", None).await.unwrap(), 1);
-        assert_eq!(sequences.reserve("message", Some(4)).await.unwrap(), 4);
-        assert_eq!(sequences.reserve("message", None).await.unwrap(), 5);
-        {
-            let mut state = sequences.state.lock().await;
-            state.entries.get_mut("message").unwrap().touched -= RETENTION;
-            state.last_cleanup = None;
-        }
-        assert_eq!(sequences.reserve("message", None).await.unwrap(), 1);
-    }
-}

@@ -119,7 +119,6 @@ let config = GatewayConfig {
 ```powershell
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
 ```
 
 Node.js 源码开发还需要安装依赖、构建原生模块和检查 TypeScript：

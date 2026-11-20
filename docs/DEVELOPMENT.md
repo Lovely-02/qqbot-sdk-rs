@@ -53,6 +53,6 @@
 
 ## 平台规则与运行边界 🍀
 
-字段、路径、消息能力和权限以 [QQ 官方 API v2](https://bot.q.qq.com/wiki/develop/api-v2/) 为来源，当前 SDK 的本地行为见 [运行规则卡](12-runtime-behavior.md)。本地编译与测试通过不代表已经获得线上权限；遇到平台错误时保留错误码、HTTP 状态和链路 ID。
+字段、路径、消息能力和权限以 [QQ 官方 API v2](https://bot.q.qq.com/wiki/develop/api-v2/) 为来源，当前 SDK 的本地行为见 [运行规则卡](12-runtime-behavior.md)。线上权限以平台为准。遇到平台错误时保留错误码、HTTP 状态和链路 ID。
 
 🌸 [回到项目介绍](../README.md)
