@@ -1,4 +1,4 @@
-use super::{optional_query, segment};
+use super::{MediaTarget, optional_query, segment};
 use crate::{client::QQBotClient, error::Result, models::Group};
 use reqwest::Method;
 use serde_json::Value;
@@ -40,7 +40,7 @@ impl<'a> GroupApi<'a> {
         self.client
             .request_json(
                 Method::POST,
-                &format!("/v2/groups/{}/files", segment(group_openid)),
+                &MediaTarget::Group(group_openid).upload_path("files"),
                 Some(body),
             )
             .await
@@ -409,7 +409,7 @@ impl<'a> GroupApi<'a> {
         self.client
             .request_json(
                 Method::POST,
-                &format!("/v2/groups/{}/upload_prepare", segment(group_id)),
+                &MediaTarget::Group(group_id).upload_path("upload_prepare"),
                 Some(body),
             )
             .await
@@ -422,7 +422,7 @@ impl<'a> GroupApi<'a> {
         self.client
             .request_json(
                 Method::POST,
-                &format!("/v2/groups/{}/upload_part_finish", segment(group_id)),
+                &MediaTarget::Group(group_id).upload_path("upload_part_finish"),
                 Some(body),
             )
             .await

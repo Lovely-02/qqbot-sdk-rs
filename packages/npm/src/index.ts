@@ -1,5 +1,6 @@
 import { createApi, type BotApi } from './api';
-import { readMaterialSource } from './material-source';
+import { parseUploadSource, readMaterialSource } from './upload-source';
+export type { UploadSource } from './upload-source';
 export type { BotApi, MediaTarget } from './api';
 import { EventEmitter } from 'node:events';
 import { NativeBot } from '../native.js';
@@ -66,6 +67,7 @@ export const Intents = Object.freeze({
   PUBLIC_GUILD_MESSAGES: 1 << 30,
 });
 type TargetKind = 'user' | 'group' | 'channel' | 'direct';
+
 export class Bot extends EventEmitter<BotEvents> {
   #native: NativeBot;
   readonly api: BotApi;
@@ -79,6 +81,20 @@ export class Bot extends EventEmitter<BotEvents> {
       async (fileName, contentType, source) => {
         const data = await readMaterialSource(source);
         return this.#native.uploadMaterial(fileName, contentType, data);
+      },
+      {
+        uploadMedia: async (target, fileType, source, sendMessage) => {
+          const parsed = parseUploadSource(source);
+          return parsed instanceof URL
+            ? this.api.messages.uploadMediaUrl(target, fileType, parsed.href, sendMessage)
+            : this.#native.uploadMedia(target, fileType, parsed, sendMessage);
+        },
+        sendMedia: async (target, fileType, source, message) => {
+          const parsed = parseUploadSource(source);
+          return parsed instanceof URL
+            ? this.api.messages.sendMediaUrl(target, fileType, parsed.href, message)
+            : this.#native.sendMedia(target, fileType, parsed, message);
+        },
       },
     );
   }

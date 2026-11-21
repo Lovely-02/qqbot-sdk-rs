@@ -105,6 +105,46 @@ impl NodeBot {
     }
 
     #[napi]
+    pub async fn upload_media(
+        &self,
+        target: Value,
+        file_type: Value,
+        data: Buffer,
+        srv_send_msg: bool,
+    ) -> Result<Value> {
+        let target = api::MediaTargetInput::parse(target)?;
+        let file_type = serde_json::from_value(file_type).map_err(js_error)?;
+        let result = self
+            .client
+            .api()
+            .messages()
+            .upload_media(target.target()?, file_type, &data, srv_send_msg)
+            .await
+            .map_err(js_error)?;
+        serde_json::to_value(result).map_err(js_error)
+    }
+
+    #[napi]
+    pub async fn send_media(
+        &self,
+        target: Value,
+        file_type: Value,
+        data: Buffer,
+        message: Value,
+    ) -> Result<Value> {
+        let target = api::MediaTargetInput::parse(target)?;
+        let file_type = serde_json::from_value(file_type).map_err(js_error)?;
+        let result = self
+            .client
+            .api()
+            .messages()
+            .send_media(target.target()?, file_type, &data, sendable(message)?)
+            .await
+            .map_err(js_error)?;
+        serde_json::to_value(result).map_err(js_error)
+    }
+
+    #[napi]
     pub async fn upload_material(
         &self,
         file_name: String,

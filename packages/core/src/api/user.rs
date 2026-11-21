@@ -1,4 +1,4 @@
-use super::{optional_query, segment};
+use super::{MediaTarget, optional_query, segment};
 use crate::{client::QQBotClient, error::Result, models::User};
 use reqwest::Method;
 use serde_json::Value;
@@ -97,7 +97,7 @@ impl<'a> UserApi<'a> {
         self.client
             .request_json(
                 Method::POST,
-                &format!("/v2/users/{}/files", segment(user_openid)),
+                &MediaTarget::C2c(user_openid).upload_path("files"),
                 Some(body),
             )
             .await
@@ -110,7 +110,7 @@ impl<'a> UserApi<'a> {
         self.client
             .request_json(
                 Method::POST,
-                &format!("/v2/users/{}/upload_prepare", segment(user_id)),
+                &MediaTarget::C2c(user_id).upload_path("upload_prepare"),
                 Some(body),
             )
             .await
@@ -123,7 +123,7 @@ impl<'a> UserApi<'a> {
         self.client
             .request_json(
                 Method::POST,
-                &format!("/v2/users/{}/upload_part_finish", segment(user_id)),
+                &MediaTarget::C2c(user_id).upload_path("upload_part_finish"),
                 Some(body),
             )
             .await

@@ -3,15 +3,26 @@
 use super::{MediaTarget, MessageApi, is_http_url};
 use crate::{
     error::{Result, SdkError},
-    models::{Media, Message},
+    models::{Media, Message, MessageRequest},
     segment::Sendable,
 };
 use md5::{Digest, Md5};
 use reqwest::Method;
 use serde::Deserialize;
 use serde_json::{Value, json};
+use std::future::Future;
 
 use crate::api::segment;
+
+impl MediaTarget<'_> {
+    pub(in crate::api) fn upload_path(self, endpoint: &str) -> String {
+        let (scope, id) = match self {
+            Self::C2c(id) => ("users", id),
+            Self::Group(id) => ("groups", id),
+        };
+        format!("/v2/{scope}/{}/{endpoint}", segment(id))
+    }
+}
 
 impl<'a> MessageApi<'a> {
     /// 类型化富媒体上传，保留 file_name、file_data 等官方字段。
@@ -23,12 +34,8 @@ impl<'a> MessageApi<'a> {
         target: MediaTarget<'_>,
         body: &crate::models::MediaUploadRequest,
     ) -> Result<Media> {
-        let path = match target {
-            MediaTarget::C2c(id) => format!("/v2/users/{}/files", segment(id)),
-            MediaTarget::Group(id) => format!("/v2/groups/{}/files", segment(id)),
-        };
         self.client
-            .request_json(Method::POST, &path, Some(body))
+            .request_json(Method::POST, &target.upload_path("files"), Some(body))
             .await
     }
 
@@ -51,9 +58,6 @@ impl<'a> MessageApi<'a> {
         if data.is_empty() {
             return Err(SdkError::InvalidInput("上传文件不能为空".into()));
         }
-        let target_id = match target {
-            MediaTarget::C2c(id) | MediaTarget::Group(id) => id,
-        };
         let file_name = format!("upload.{}", media_extension(file_type));
         let md5 = hex::encode(Md5::digest(data));
         let sha1 = {
@@ -63,16 +67,7 @@ impl<'a> MessageApi<'a> {
             hex::encode(hasher.finalize())
         };
         let md5_10m = hex::encode(Md5::digest(&data[..data.len().min(10_002_432)]));
-        let prepare_path = match target {
-            MediaTarget::C2c(_) => format!(
-                "/v2/users/{target_id}/upload_prepare",
-                target_id = segment(target_id)
-            ),
-            MediaTarget::Group(_) => format!(
-                "/v2/groups/{target_id}/upload_prepare",
-                target_id = segment(target_id)
-            ),
-        };
+        let prepare_path = target.upload_path("upload_prepare");
         let prepare_body = json!({
             "file_type": file_type,
             "file_size": data.len().to_string(),
@@ -89,12 +84,7 @@ impl<'a> MessageApi<'a> {
             .await?;
         let ranges = prepare.ranges(data.len())?;
         let policy = super::upload::UploadPolicy::from_config(prepare.upload_config.as_ref())?;
-        let finish_path = match target {
-            MediaTarget::C2c(_) => format!("/v2/users/{}/upload_part_finish", segment(target_id)),
-            MediaTarget::Group(_) => {
-                format!("/v2/groups/{}/upload_part_finish", segment(target_id))
-            }
-        };
+        let finish_path = target.upload_path("upload_part_finish");
         use futures_util::{StreamExt, TryStreamExt, stream};
         let uploads = ranges
             .into_iter()
@@ -136,10 +126,7 @@ impl<'a> MessageApi<'a> {
             .buffer_unordered(policy.concurrency)
             .try_collect::<Vec<_>>()
             .await?;
-        let path = match target {
-            MediaTarget::C2c(_) => format!("/v2/users/{}/files", segment(target_id)),
-            MediaTarget::Group(_) => format!("/v2/groups/{}/files", segment(target_id)),
-        };
+        let path = target.upload_path("files");
         let body = json!({
             "file_type": file_type,
             "file_name": file_name,
@@ -189,12 +176,8 @@ impl<'a> MessageApi<'a> {
         target: MediaTarget<'_>,
         body: &Value,
     ) -> Result<Media> {
-        let path = match target {
-            MediaTarget::C2c(openid) => format!("/v2/users/{}/files", segment(openid)),
-            MediaTarget::Group(openid) => format!("/v2/groups/{}/files", segment(openid)),
-        };
         self.client
-            .request_json(Method::POST, &path, Some(body))
+            .request_json(Method::POST, &target.upload_path("files"), Some(body))
             .await
     }
 
@@ -209,25 +192,13 @@ impl<'a> MessageApi<'a> {
         data: &[u8],
         message: impl Into<Sendable>,
     ) -> Result<Message> {
-        let built = message.into().build()?;
-        if built.raw.is_some() {
-            return Err(SdkError::InvalidInput(
-                "raw 不支持 send_media，请直接发送原生请求体".into(),
-            ));
-        }
-        if built.media.is_some() || built.request.media.is_some() {
-            return Err(SdkError::InvalidInput(
-                "send_media 已经接收上传数据，不要再传入图片、视频、音频或富媒体消息段".into(),
-            ));
-        }
-        let media = self.upload_media(target, file_type, data, false).await?;
-        let mut request = built.request;
-        request.media = Some(media);
-        request.msg_type = Some(7);
-        match target {
-            MediaTarget::C2c(id) => self.send_c2c(id, request).await,
-            MediaTarget::Group(id) => self.send_group(id, request).await,
-        }
+        let request = Self::build_media_message(message.into(), "send_media", "上传数据")?;
+        self.send_with_media(
+            target,
+            request,
+            self.upload_media(target, file_type, data, false),
+        )
+        .await
     }
 
     /// 使用 URL 直传并立即发送富媒体消息。
@@ -241,20 +212,41 @@ impl<'a> MessageApi<'a> {
         url: &str,
         message: impl Into<Sendable>,
     ) -> Result<Message> {
-        let built = message.into().build()?;
+        let request = Self::build_media_message(message.into(), "send_media_url", "上传地址")?;
+        self.send_with_media(
+            target,
+            request,
+            self.upload_media_url(target, file_type, url, false),
+        )
+        .await
+    }
+
+    fn build_media_message(
+        message: Sendable,
+        operation: &str,
+        source: &str,
+    ) -> Result<MessageRequest> {
+        let built = message.build()?;
         if built.raw.is_some() {
-            return Err(SdkError::InvalidInput(
-                "raw 不支持 send_media_url，请直接发送原生请求体".into(),
-            ));
+            return Err(SdkError::InvalidInput(format!(
+                "raw 不支持 {operation}，请直接发送原生请求体"
+            )));
         }
         if built.media.is_some() || built.request.media.is_some() {
-            return Err(SdkError::InvalidInput(
-                "send_media_url 已经接收上传地址，不要再传入图片、视频、音频或富媒体消息段".into(),
-            ));
+            return Err(SdkError::InvalidInput(format!(
+                "{operation} 已经接收{source}，不要再传入图片、视频、音频或富媒体消息段"
+            )));
         }
-        let media = self.upload_media_url(target, file_type, url, false).await?;
-        let mut request = built.request;
-        request.media = Some(media);
+        Ok(built.request)
+    }
+
+    async fn send_with_media(
+        &self,
+        target: MediaTarget<'_>,
+        mut request: MessageRequest,
+        upload: impl Future<Output = Result<Media>>,
+    ) -> Result<Message> {
+        request.media = Some(upload.await?);
         request.msg_type = Some(7);
         match target {
             MediaTarget::C2c(id) => self.send_c2c(id, request).await,
