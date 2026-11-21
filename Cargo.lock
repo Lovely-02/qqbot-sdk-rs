@@ -1008,7 +1008,7 @@ dependencies = [
 
 [[package]]
 name = "qqbot-sdk-core"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "async-trait",
  "base64",
@@ -1032,7 +1032,7 @@ dependencies = [
 
 [[package]]
 name = "qqbot-sdk-js"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "napi",
  "napi-build",
@@ -1044,7 +1044,7 @@ dependencies = [
 
 [[package]]
 name = "qqbot-sdk-py"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "pyo3",
  "pyo3-async-runtimes",
@@ -1057,7 +1057,7 @@ dependencies = [
 
 [[package]]
 name = "qqbot-sdk-rs"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "qqbot-sdk-core",
  "serde_json",

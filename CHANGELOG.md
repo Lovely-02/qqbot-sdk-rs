@@ -11,6 +11,18 @@
 - 补充消息／审核事件字段，保留业务错误链路和异步审核数据。
 - 同步官方接口、字段覆盖清单与示例。
 
+## [0.4.0](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.3.4...qqbot-sdk-rs-v0.4.0) (2026-11-21)
+
+
+### ✨ 新功能
+
+* **python:** 新增 Python SDK 并统一三端 API 分组 ([af7c3dc](https://github.com/Lovely-02/qqbot-sdk-rs/commit/af7c3dc76fbc8a9493d754f5c12371f34ec07fff))
+
+
+### 🐛 Bug 修复
+
+* **python:** 统一 Python SDK 包名与导入名 ([617e1a8](https://github.com/Lovely-02/qqbot-sdk-rs/commit/617e1a882d1300951d9c3bf61e81df6d7084c1dc))
+
 ## [0.3.4](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.3.3...qqbot-sdk-rs-v0.3.4) (2026-11-21)
 
 
