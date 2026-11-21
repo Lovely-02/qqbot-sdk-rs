@@ -1,4 +1,4 @@
 [workspace]
-members = ["packages/core", "packages/rust", "packages/npm"]
+members = ["packages/core", "packages/rust", "packages/npm", "packages/python"]
 default-members = ["packages/rust"]
 resolver = "3"

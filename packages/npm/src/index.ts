@@ -11,6 +11,8 @@ export interface BotOptions {
   appSecret: string;
   mode?: 'public' | 'private' | 'webhook';
   intents?: number;
+  /** Custom endpoint. Authentication credentials are sent to this URL. */
+  apiBaseUrl?: string;
 }
 /** QQ MessageRequest 字段保留官方的下划线命名方式。 */
 export interface MessageRequest {

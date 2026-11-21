@@ -1,7 +1,11 @@
-//! qqbot-sdk-core：Rust 与 Node.js 共用的异步 QQ 机器人 SDK 实现。
+//! qqbot-sdk-core：Rust、Node.js 与 Python 共用的异步 QQ 机器人 SDK 实现。
 
 pub mod api;
 pub mod auth;
+#[doc(hidden)]
+pub mod binding_api;
+#[doc(hidden)]
+pub mod binding_webhook;
 pub mod client;
 mod endpoint_limits;
 pub mod entities;

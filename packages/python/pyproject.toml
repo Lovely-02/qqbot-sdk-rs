@@ -1,0 +1,14 @@
+[build-system]
+requires = ["maturin>=1.9.4,<2"]
+build-backend = "maturin"
+
+[project]
+name = "qqbot-sdk-py"
+dynamic = ["version"]
+description = "Async Python bindings for the QQ Bot SDK"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[tool.maturin]
+python-source = "python"
+module-name = "qqbot_sdk._native"

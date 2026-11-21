@@ -1,0 +1,23 @@
+[package]
+name = "qqbot-sdk-python"
+version = "0.3.4"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+publish = false
+
+[lib]
+name = "_native"
+crate-type = ["cdylib"]
+# Exercise the extension from Python without embedding an interpreter in a Rust test binary.
+test = false
+doctest = false
+
+[dependencies]
+pyo3 = { version = "0.30", features = ["abi3-py310"] }
+pyo3-async-runtimes = { version = "0.30", features = ["tokio-runtime"] }
+pythonize = "0.30"
+qqbot-sdk-core = { path = "../core" }
+serde = "1"
+serde_json = "1"
+tokio = { version = "1", features = ["sync", "macros"] }

@@ -1,7 +1,9 @@
-mod api;
 use napi::{bindgen_prelude::*, threadsafe_function::ThreadsafeFunction};
 use napi_derive::napi;
-use qqbot_sdk_core::{Bot, BotMode, EventRouter, GatewayClient, GatewayConfig, Intents, Sendable};
+use qqbot_sdk_core::binding_api::{self, MediaTargetInput, sendable};
+use qqbot_sdk_core::{
+    Bot, BotMode, ClientConfig, EventRouter, GatewayClient, GatewayConfig, Intents,
+};
 use serde_json::{Value, json};
 use std::sync::{
     Arc,
@@ -19,6 +21,7 @@ pub struct BotOptions {
     pub app_secret: String,
     pub mode: Option<String>,
     pub intents: Option<u32>,
+    pub api_base_url: Option<String>,
 }
 
 #[napi(js_name = "NativeBot")]
@@ -47,10 +50,19 @@ impl NodeBot {
                 ));
             }
         };
+        let mut config = ClientConfig {
+            mode,
+            ..Default::default()
+        };
+        if let Some(url) = options.api_base_url {
+            config.api_base_url = url;
+        }
         let (shutdown, _) = watch::channel(false);
         Ok(Self {
             secret: options.app_secret.clone(),
-            client: Arc::new(Bot::new(options.app_id, options.app_secret, mode).map_err(js_error)?),
+            client: Arc::new(
+                Bot::with_config(options.app_id, options.app_secret, config).map_err(js_error)?,
+            ),
             intents: options.intents,
             started: AtomicBool::new(false),
             shutdown,
@@ -101,7 +113,9 @@ impl NodeBot {
 
     #[napi]
     pub async fn api_call(&self, operation: String, args: Vec<Value>) -> Result<Value> {
-        self.call_api(&operation, args).await
+        binding_api::call(&self.client, &operation, args)
+            .await
+            .map_err(js_error)
     }
 
     #[napi]
@@ -112,13 +126,18 @@ impl NodeBot {
         data: Buffer,
         srv_send_msg: bool,
     ) -> Result<Value> {
-        let target = api::MediaTargetInput::parse(target)?;
+        let target = MediaTargetInput::parse(target).map_err(js_error)?;
         let file_type = serde_json::from_value(file_type).map_err(js_error)?;
         let result = self
             .client
             .api()
             .messages()
-            .upload_media(target.target()?, file_type, &data, srv_send_msg)
+            .upload_media(
+                target.target().map_err(js_error)?,
+                file_type,
+                &data,
+                srv_send_msg,
+            )
             .await
             .map_err(js_error)?;
         serde_json::to_value(result).map_err(js_error)
@@ -132,13 +151,18 @@ impl NodeBot {
         data: Buffer,
         message: Value,
     ) -> Result<Value> {
-        let target = api::MediaTargetInput::parse(target)?;
+        let target = MediaTargetInput::parse(target).map_err(js_error)?;
         let file_type = serde_json::from_value(file_type).map_err(js_error)?;
         let result = self
             .client
             .api()
             .messages()
-            .send_media(target.target()?, file_type, &data, sendable(message)?)
+            .send_media(
+                target.target().map_err(js_error)?,
+                file_type,
+                &data,
+                sendable(message).map_err(js_error)?,
+            )
             .await
             .map_err(js_error)?;
         serde_json::to_value(result).map_err(js_error)
@@ -167,22 +191,8 @@ impl NodeBot {
         if !self.client.mode().is_webhook() {
             return Err(Error::from_reason("Bot must use webhook mode"));
         }
-        let webhook = qqbot_sdk_core::Webhook::new(
-            qqbot_sdk_core::WebhookVerifier::from_secret(&self.secret).map_err(js_error)?,
-        );
-        let payload = webhook
-            .parse(&timestamp, &signature, &body)
-            .map_err(js_error)?;
-        if payload.op == 13 {
-            return Ok(
-                json!({ "response": qqbot_sdk_core::Webhook::validation_response(&body, &self.secret).map_err(js_error)? }),
-            );
-        }
-        Ok(json!({
-            "response": qqbot_sdk_core::Webhook::acknowledgement(),
-            "event": { "id": payload.id, "name": payload.t.unwrap_or_default(),
-                "sequence": payload.s.map(|value| value.to_string()), "data": payload.d }
-        }))
+        qqbot_sdk_core::binding_webhook::webhook(&self.secret, &timestamp, &signature, &body)
+            .map_err(js_error)
     }
 
     #[napi]
@@ -195,17 +205,7 @@ impl NodeBot {
         if id.trim().is_empty() {
             return Err(Error::from_reason("target id must not be empty"));
         }
-        let message = match body {
-            Value::String(text) => Sendable::from(text),
-            Value::Object(_) => Sendable::from(
-                serde_json::from_value::<qqbot_sdk_core::MessageRequest>(body).map_err(js_error)?,
-            ),
-            _ => {
-                return Err(Error::from_reason(
-                    "message must be text or a MessageRequest object",
-                ));
-            }
-        };
+        let message = sendable(body).map_err(js_error)?;
         let api = self.client.api();
         let messages = api.messages();
         let result = match kind.as_str() {
@@ -217,17 +217,5 @@ impl NodeBot {
         }
         .map_err(js_error)?;
         serde_json::to_value(result).map_err(js_error)
-    }
-}
-
-fn sendable(value: Value) -> Result<Sendable> {
-    match value {
-        Value::String(text) => Ok(Sendable::from(text)),
-        Value::Object(_) => Ok(Sendable::from(
-            serde_json::from_value::<qqbot_sdk_core::MessageRequest>(value).map_err(js_error)?,
-        )),
-        _ => Err(Error::from_reason(
-            "message must be text or a MessageRequest object",
-        )),
     }
 }

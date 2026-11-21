@@ -17,6 +17,7 @@ export function checkVersions(root: string, tag?: string): string {
     'packages/rust/Cargo.toml core dependency': read('packages/rust/Cargo.toml')
       .match(/^qqbot-sdk-core\s*=\s*\{[^}]*version\s*=\s*"([^"]+)"/m)?.[1],
     'packages/core/Cargo.toml': packageVersion('packages/core/Cargo.toml'),
+    'packages/python/Cargo.toml': packageVersion('packages/python/Cargo.toml'),
     'packages/npm/Cargo.toml': packageVersion('packages/npm/Cargo.toml'),
     'packages/npm/package.json': json('packages/npm/package.json').version,
     'packages/npm/package-lock.json': lock.version,
@@ -24,7 +25,7 @@ export function checkVersions(root: string, tag?: string): string {
     '.release-please-manifest.json': json('.release-please-manifest.json')['.'],
   };
   for (const [file, names] of [
-    ['Cargo.lock', ['qqbot-sdk-core', 'qqbot-sdk-rs', 'qqbot-sdk-js']],
+    ['Cargo.lock', ['qqbot-sdk-core', 'qqbot-sdk-rs', 'qqbot-sdk-js', 'qqbot-sdk-python']],
   ] as const) {
     const packages = read(file).split(/^\[\[package\]\]\s*$/m);
     for (const name of names) {

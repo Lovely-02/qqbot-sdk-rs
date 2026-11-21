@@ -39,6 +39,10 @@ async fn main() -> Result<()> {
 
 Node.js 包为 `@lovely-02/qqbot-sdk-js`，从 GitHub Packages 安装；认证、构建和 TypeScript 示例见 [Node.js 指南](docs/13-nodejs.md)。
 
+## Python SDK
+
+Python 3.10+ 可通过 PyO3 绑定调用共享 API、收发消息与处理事件。源码安装和调用示例见 [Python SDK 指南](packages/python/README.md)。
+
 ## 开发者的小书架 📚
 
 | 想做什么                     | 打开这里                                                                                                              |
@@ -53,7 +57,7 @@ Node.js 包为 `@lovely-02/qqbot-sdk-js`，从 GitHub Packages 安装；认证�
 
 ## 仓库小地图 🗺️
 
-`packages/core` 是共享核心，`packages/rust` 是 Rust 入口与示例，`packages/npm` 是 Node.js 绑定。构建和检查步骤见 [工程手册](docs/07-operations.md)。
+`packages/core` 是共享核心，`packages/rust` 是 Rust 入口与示例，`packages/npm` 和 `packages/python` 分别提供 Node.js 和 Python 绑定。构建和检查步骤见 [工程手册](docs/07-operations.md)。
 
 ## 许可证 🍀
 

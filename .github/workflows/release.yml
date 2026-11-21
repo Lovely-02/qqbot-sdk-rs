@@ -16,7 +16,7 @@ on:
         required: true
         default: both
         type: choice
-        options: [both, rust, npm]
+        options: [all, both, rust, npm, python]
       skip-core:
         description: '⏭️ 重试时跳过已经发布成功的 core crate'
         required: false
@@ -74,6 +74,11 @@ jobs:
         run: |
           rustup update stable --no-self-update
           rustup default stable
+      - name: 🔍 检查三端 API 绑定
+        if: github.event_name == 'pull_request'
+        run: |
+          rustup component add rustfmt
+          python3 packages/npm/scripts/generate-api.py --check
       - name: 🔧 检查 Rust workspace 编译
         run: cargo check --workspace --all-targets --locked
 
@@ -83,7 +88,7 @@ jobs:
     if: >-
       github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
       (needs.release.outputs.release_created == 'true' ||
-       (inputs.tag != '' && inputs.target != 'npm'))
+       (inputs.tag != '' && (inputs.target == 'rust' || inputs.target == 'both' || inputs.target == 'all')))
     runs-on: ubuntu-latest
     steps:
       - name: 📂 检出源码
@@ -121,7 +126,7 @@ jobs:
       always() && !cancelled() &&
       (github.event_name == 'pull_request' ||
        (needs.release.result == 'success' &&
-        (needs.release.outputs.release_created == 'true' || (inputs.tag != '' && inputs.target != 'rust'))))
+        (needs.release.outputs.release_created == 'true' || (inputs.tag != '' && (inputs.target == 'npm' || inputs.target == 'both' || inputs.target == 'all')))))
     strategy:
       fail-fast: false
       matrix:
@@ -183,7 +188,7 @@ jobs:
       github.event_name != 'pull_request' &&
       (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/github-packages-v')) &&
       needs['npm-build'].result == 'success' &&
-      (needs.release.outputs.release_created == 'true' || (inputs.tag != '' && inputs.target != 'rust'))
+      (needs.release.outputs.release_created == 'true' || (inputs.tag != '' && (inputs.target == 'npm' || inputs.target == 'both' || inputs.target == 'all')))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -238,3 +243,102 @@ jobs:
           npm publish "./release-packages/lovely-02-qqbot-sdk-js-$version.tgz" --registry="$registry"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  python-build:
+    name: 🐍 构建 Python wheel（${{ matrix.target }}）
+    needs: release
+    if: >-
+      always() && !cancelled() &&
+      (github.event_name == 'pull_request' ||
+       (needs.release.result == 'success' && github.ref == 'refs/heads/main' &&
+        (needs.release.outputs.release_created == 'true' ||
+         (github.event_name == 'workflow_dispatch' && inputs.tag != '' &&
+          (inputs.target == 'python' || inputs.target == 'all')))))
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            manylinux: '2_28'
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            manylinux: '2_28'
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+          - os: macos-15
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: 📂 检出源码
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.release.outputs.tag_name || github.sha }}
+          persist-credentials: false
+      - name: ⚙️ 配置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: 🐍 构建 wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          manylinux: ${{ matrix.manylinux || 'off' }}
+          rust-toolchain: stable
+          maturin-version: '1.16.0'
+          args: --release --locked --manifest-path packages/python/Cargo.toml --out python-dist
+      - name: 🔍 校验并测试 wheel
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.release.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+          version=$(python -c 'from pathlib import Path; print(Path("VERSION").read_text().strip())')
+          if [[ -n "$RELEASE_TAG" && "$RELEASE_TAG" != "qqbot-sdk-rs-v$version" ]]; then
+            echo "Release tag does not match VERSION" >&2
+            exit 1
+          fi
+          wheels=(python-dist/qqbot_sdk_py-"$version"-cp310-abi3-*.whl)
+          if [[ "${#wheels[@]}" != 1 || ! -f "${wheels[0]}" ]]; then
+            echo "Expected one qqbot-sdk-py wheel for $version and CPython 3.10 abi3" >&2
+            exit 1
+          fi
+          python -m pip install twine
+          python -m twine check "${wheels[0]}"
+          python -m pip install --no-deps "${wheels[0]}"
+          python -m unittest discover -s packages/python/tests -v
+      - name: 💾 保存 Python wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-wheel-${{ matrix.target }}
+          path: python-dist/*.whl
+          if-no-files-found: error
+
+  python-publish:
+    name: 📦 发布 PyPI
+    needs: [release, python-build]
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (needs.release.outputs.release_created == 'true' ||
+       (github.event_name == 'workflow_dispatch' && inputs.tag != '' &&
+        (inputs.target == 'python' || inputs.target == 'all')))
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/qqbot-sdk-py/
+    permissions:
+      id-token: write
+    steps:
+      - name: 📥 汇总 Python wheel
+        uses: actions/download-artifact@v4
+        with:
+          pattern: python-wheel-*
+          merge-multiple: true
+          path: python-dist
+      - name: 📤 发布 Python SDK
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: python-dist/
+          skip-existing: true
