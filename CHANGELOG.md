@@ -11,6 +11,14 @@
 - 补充消息／审核事件字段，保留业务错误链路和异步审核数据。
 - 同步官方接口、字段覆盖清单与示例。
 
+## [0.3.4](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.3.3...qqbot-sdk-rs-v0.3.4) (2026-11-21)
+
+
+### 🐛 Bug 修复
+
+* 修复图片素材上传的 JSON 值数量超限 ([f67f802](https://github.com/Lovely-02/qqbot-sdk-rs/commit/f67f802da73147e3269ebc274c471237553ea5df))
+* 支持富媒体二进制上传并复用上传逻辑 ([1612d77](https://github.com/Lovely-02/qqbot-sdk-rs/commit/1612d773a30e4ca8c676c8fff3a89f4a2cdae603))
+
 ## [0.3.3](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.3.2...qqbot-sdk-rs-v0.3.3) (2026-11-20)
 
 
