@@ -14,8 +14,8 @@ use std::sync::{
 };
 use tokio::sync::watch;
 
-create_exception!(qqbot_sdk, BotError, PyException);
-create_exception!(qqbot_sdk, ApiError, BotError);
+create_exception!(qqbot_sdk_py, BotError, PyException);
+create_exception!(qqbot_sdk_py, ApiError, BotError);
 
 fn sdk_error(error: SdkError) -> PyErr {
     match error {
@@ -47,7 +47,7 @@ fn response_to_python<T: Serialize>(response: T) -> PyResult<Py<PyAny>> {
     Python::attach(|py| Ok(pythonize::pythonize(py, &response)?.unbind()))
 }
 
-#[pyclass(name = "Bot", module = "qqbot_sdk._native")]
+#[pyclass(name = "Bot", module = "qqbot_sdk_py._native")]
 struct PythonBot {
     client: Bot,
     secret: String,
@@ -102,7 +102,7 @@ impl PythonBot {
     #[getter]
     fn api<'py>(slf: &Bound<'py, Self>) -> PyResult<Bound<'py, PyAny>> {
         slf.py()
-            .import("qqbot_sdk.api")?
+            .import("qqbot_sdk_py.api")?
             .getattr("BotApi")?
             .call1((slf,))
     }
@@ -335,7 +335,7 @@ fn call_api(
     })
 }
 
-#[pyclass(name = "Target", module = "qqbot_sdk._native", subclass)]
+#[pyclass(name = "Target", module = "qqbot_sdk_py._native", subclass)]
 struct PythonTarget {
     id: String,
     client: Bot,
@@ -399,7 +399,7 @@ impl PythonTarget {
     }
 }
 
-#[pyclass(name = "User", module = "qqbot_sdk._native", extends = PythonTarget)]
+#[pyclass(name = "User", module = "qqbot_sdk_py._native", extends = PythonTarget)]
 struct PythonUser;
 
 #[pymodule]

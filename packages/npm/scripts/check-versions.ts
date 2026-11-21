@@ -25,7 +25,7 @@ export function checkVersions(root: string, tag?: string): string {
     '.release-please-manifest.json': json('.release-please-manifest.json')['.'],
   };
   for (const [file, names] of [
-    ['Cargo.lock', ['qqbot-sdk-core', 'qqbot-sdk-rs', 'qqbot-sdk-js', 'qqbot-sdk-python']],
+    ['Cargo.lock', ['qqbot-sdk-core', 'qqbot-sdk-rs', 'qqbot-sdk-js', 'qqbot-sdk-py']],
   ] as const) {
     const packages = read(file).split(/^\[\[package\]\]\s*$/m);
     for (const name of names) {
