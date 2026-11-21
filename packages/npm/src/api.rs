@@ -1247,23 +1247,6 @@ impl NodeBot {
                 api.materials().delete(&image_id).await.map_err(js_error)?;
                 Ok(Value::Null)
             }
-            "materials.upload" => {
-                let file_name: String =
-                    serde_json::from_value(args.first().cloned().unwrap_or(Value::Null))
-                        .map_err(js_error)?;
-                let content_type: String =
-                    serde_json::from_value(args.get(1).cloned().unwrap_or(Value::Null))
-                        .map_err(js_error)?;
-                let data: Vec<u8> =
-                    serde_json::from_value(args.get(2).cloned().unwrap_or(Value::Null))
-                        .map_err(js_error)?;
-                let result = api
-                    .materials()
-                    .upload(&file_name, &content_type, &data)
-                    .await
-                    .map_err(js_error)?;
-                serde_json::to_value(result).map_err(js_error)
-            }
             "menu.get" => {
                 let result = api.menu().get().await.map_err(js_error)?;
                 serde_json::to_value(result).map_err(js_error)

@@ -1,0 +1,66 @@
+import { Buffer } from 'node:buffer';
+
+// Match the core SDK's image size limit before allocating or downloading the payload.
+const maxMaterialBytes = 10 * 1024 * 1024;
+
+export async function readMaterialSource(source: Buffer | string | URL): Promise<Buffer> {
+  if (Buffer.isBuffer(source)) {
+    checkSize(source.length);
+    // Snapshot the bytes before the asynchronous native upload.
+    return Buffer.from(source);
+  }
+  if (source instanceof URL || (typeof source === 'string' && /^https?:\/\//i.test(source))) {
+    return downloadMaterial(new URL(source));
+  }
+  if (typeof source !== 'string') {
+    throw new TypeError('Material source must be a Buffer, Base64 string or HTTP(S) URL');
+  }
+
+  const base64 = source.trim().replace(/^data:image\/[\w.+-]+;base64,/i, '').replace(/[\t\n\r ]/g, '');
+  if (base64.length > Math.ceil(maxMaterialBytes / 3) * 4) {
+    throw new RangeError('Material image must not exceed 10 MiB');
+  }
+  const bytes = Buffer.from(base64, 'base64');
+  const encoded = bytes.toString('base64');
+  if (!bytes.length || (base64 !== encoded && base64 !== encoded.replace(/=+$/, ''))) {
+    throw new TypeError('Invalid Base64 material image');
+  }
+  checkSize(bytes.length);
+  return bytes;
+}
+
+function checkSize(size: number): void {
+  if (size > maxMaterialBytes) {
+    throw new RangeError('Material image must not exceed 10 MiB');
+  }
+}
+
+async function downloadMaterial(url: URL): Promise<Buffer> {
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new TypeError('Material URL must use HTTP or HTTPS');
+  }
+  const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+  if (!response.ok || !response.body) {
+    await response.body?.cancel();
+    throw new Error(`Material download failed (HTTP ${response.status})`);
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      checkSize(size);
+      chunks.push(value);
+    }
+  } catch (error) {
+    await reader.cancel().catch(() => {});
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks, size);
+}

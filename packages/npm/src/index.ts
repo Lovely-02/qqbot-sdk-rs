@@ -1,4 +1,5 @@
 import { createApi, type BotApi } from './api';
+import { readMaterialSource } from './material-source';
 export type { BotApi, MediaTarget } from './api';
 import { EventEmitter } from 'node:events';
 import { NativeBot } from '../native.js';
@@ -73,7 +74,13 @@ export class Bot extends EventEmitter<BotEvents> {
   constructor(options: BotOptions) {
     super({ captureRejections: true });
     this.#native = new NativeBot(options);
-    this.api = createApi((operation, args) => this.#native.apiCall(operation, args));
+    this.api = createApi(
+      (operation, args) => this.#native.apiCall(operation, args),
+      async (fileName, contentType, source) => {
+        const data = await readMaterialSource(source);
+        return this.#native.uploadMaterial(fileName, contentType, data);
+      },
+    );
   }
   override on<K extends keyof BotEvents>(name: K, listener: (...args: BotEvents[K]) => void): this;
   override on(name: string | symbol, listener: (...args: unknown[]) => void): this;

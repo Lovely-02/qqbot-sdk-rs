@@ -104,6 +104,23 @@ impl NodeBot {
         self.call_api(&operation, args).await
     }
 
+    #[napi]
+    pub async fn upload_material(
+        &self,
+        file_name: String,
+        content_type: String,
+        data: Buffer,
+    ) -> Result<Value> {
+        let result = self
+            .client
+            .api()
+            .materials()
+            .upload(&file_name, &content_type, &data)
+            .await
+            .map_err(js_error)?;
+        serde_json::to_value(result).map_err(js_error)
+    }
+
     /// 原始请求体必须保持字节不变，验签成功后才返回事件。
     #[napi]
     pub fn webhook(&self, timestamp: String, signature: String, body: Buffer) -> Result<Value> {
