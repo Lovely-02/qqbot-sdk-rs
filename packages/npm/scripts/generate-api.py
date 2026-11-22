@@ -236,7 +236,7 @@ for group in python_groups:
 python_lines.extend(["", "    def __init__(self, client: _NativeBot) -> None:"])
 for group in python_groups:
     python_lines.append(f"        self.{group} = {group.title()}Methods(client)")
-python_api = root.parent / "python" / "python" / "qqbot_sdk_py" / "api.py"
+python_api = root.parent / "python" / "python" / "qqbot_sdk_python" / "api.py"
 emit(python_api, "\n".join(python_lines) + "\n")
 
 formatted = subprocess.run(

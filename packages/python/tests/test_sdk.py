@@ -3,7 +3,7 @@ import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from qqbot_sdk_py import ApiError, Bot, BotError
+from qqbot_sdk_python import ApiError, Bot, BotError
 
 
 class FakeQQ(BaseHTTPRequestHandler):

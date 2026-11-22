@@ -300,9 +300,9 @@ jobs:
             echo "Release tag does not match VERSION" >&2
             exit 1
           fi
-          wheels=(python-dist/qqbot_sdk_py-"$version"-cp310-abi3-*.whl)
+          wheels=(python-dist/qqbot_sdk_python-"$version"-cp310-abi3-*.whl)
           if [[ "${#wheels[@]}" != 1 || ! -f "${wheels[0]}" ]]; then
-            echo "Expected one qqbot-sdk-py wheel for $version and CPython 3.10 abi3" >&2
+            echo "Expected one qqbot-sdk-python wheel for $version and CPython 3.10 abi3" >&2
             exit 1
           fi
           python -m pip install twine
@@ -327,7 +327,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/qqbot-sdk-py/
+      url: https://pypi.org/project/qqbot-sdk-python/
     permissions:
       id-token: write
     steps:

@@ -5,10 +5,10 @@ Python 3.10+ 原生绑定，通过 PyO3 复用 Rust SDK 的鉴权、限频和消
 ## 从 PyPI 安装
 
 ```sh
-pip install qqbot-sdk-py
+pip install qqbot-sdk-python
 ```
 
-首次发布完成后即可安装，导入名为 `qqbot_sdk_py`。预编译 wheel 支持 CPython 3.10+，覆盖 Linux x86_64/ARM64、macOS Intel/Apple Silicon 和 Windows x64。
+首次发布完成后即可安装，导入名为 `qqbot_sdk_python`。预编译 wheel 支持 CPython 3.10+，覆盖 Linux x86_64/ARM64、macOS Intel/Apple Silicon 和 Windows x64。
 
 ## 从源码安装
 
@@ -31,7 +31,7 @@ python -m unittest discover -s tests -v
 import asyncio
 import os
 
-from qqbot_sdk_py import Bot
+from qqbot_sdk_python import Bot
 
 async def main():
     bot = Bot(os.environ["QQBOT_APP_ID"], os.environ["QQBOT_APP_SECRET"])
@@ -68,7 +68,7 @@ asyncio.run(main())
 
 | 字段 | 值 |
 | --- | --- |
-| PyPI 项目名 | `qqbot-sdk-py` |
+| PyPI 项目名 | `qqbot-sdk-python` |
 | GitHub owner | `Lovely-02` |
 | Repository | `qqbot-sdk-rs` |
 | Workflow name | `release.yml` |
