@@ -47,7 +47,8 @@ async fn main() -> Result<()> {
 | `segment::button`                             | 构造内联按钮内容        | Markdown 键盘                         |
 | `segment::reply`                              | 引用已有消息展示        | 支持引用的消息场景                    |
 | `segment::reply_to` / `reply_event`           | 被动回复元数据          | 手动构造回复请求                      |
-| `segment::ark` / `embed`                      | Ark 或 Embed 结构化消息 | 仅频道与频道私信发送                  |
+| `segment::ark`                                | Ark 结构化卡片          | 单聊、群聊、频道、频道私信            |
+| `segment::embed`                              | Embed 结构化消息        | 频道、频道私信                        |
 
 ## 频道内嵌格式要小心 🎪
 

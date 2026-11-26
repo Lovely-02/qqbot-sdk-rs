@@ -407,6 +407,8 @@ fn infer_msg_type(request: &MessageRequest) -> u8 {
         8
     } else if request.media.is_some() {
         7
+    } else if request.ark.is_some() {
+        3
     } else if request.markdown.is_some() {
         2
     } else if request.input_notify.is_some() {
@@ -568,9 +570,9 @@ fn normalize_request(
                     "@用户、@全体、表情和子频道链接是频道内嵌格式，不能用于单聊".into(),
                 ));
             }
-            if request.image.is_some() || request.embed.is_some() || request.ark.is_some() {
+            if request.image.is_some() || request.embed.is_some() {
                 return Err(SdkError::InvalidInput(
-                    "单聊官方仅支持文本、Markdown、输入状态、富媒体和图文卡片消息".into(),
+                    "单聊支持文本、Markdown、Ark、输入状态、富媒体和图文卡片消息".into(),
                 ));
             }
             if request.markdown.is_some() && request.content.is_some() {
@@ -586,6 +588,7 @@ fn normalize_request(
             let primary = [
                 request.content.as_ref().map(|_| 0),
                 request.markdown.as_ref().map(|_| 2),
+                request.ark.as_ref().map(|_| 3),
                 request.input_notify.as_ref().map(|_| 6),
                 request.media.as_ref().map(|_| 7),
                 request.card.as_ref().map(|_| 8),
@@ -595,15 +598,15 @@ fn normalize_request(
             .collect::<Vec<_>>();
             if primary.len() != 1 {
                 return Err(SdkError::InvalidInput(
-                    "单聊消息必须且只能包含 content、markdown、input_notify、media、card 之一"
+                    "单聊消息必须且只能包含 content、markdown、ark、input_notify、media、card 之一"
                         .into(),
                 ));
             }
             if let Some(msg_type) = request.msg_type
-                && !matches!(msg_type, 0 | 2 | 6 | 7 | 8)
+                && !matches!(msg_type, 0 | 2 | 3 | 6 | 7 | 8)
             {
                 return Err(SdkError::InvalidInput(
-                    "单聊 msg_type 只能是 0、2、6、7 或 8".into(),
+                    "单聊 msg_type 只能是 0、2、3、6、7 或 8".into(),
                 ));
             }
             if request
@@ -655,12 +658,11 @@ fn normalize_request(
             }
             if request.image.is_some()
                 || request.embed.is_some()
-                || request.ark.is_some()
                 || request.input_notify.is_some()
                 || request.is_wakeup.is_some()
             {
                 return Err(SdkError::InvalidInput(
-                    "群聊官方仅支持文本、Markdown、富媒体和图文卡片消息".into(),
+                    "群聊支持文本、Markdown、Ark、富媒体和图文卡片消息".into(),
                 ));
             }
             if request.markdown.is_some() && request.content.is_some() {
@@ -676,6 +678,7 @@ fn normalize_request(
             let primary = [
                 request.content.as_ref().map(|_| 0),
                 request.markdown.as_ref().map(|_| 2),
+                request.ark.as_ref().map(|_| 3),
                 request.media.as_ref().map(|_| 7),
                 request.card.as_ref().map(|_| 8),
             ]
@@ -684,14 +687,14 @@ fn normalize_request(
             .collect::<Vec<_>>();
             if primary.len() != 1 {
                 return Err(SdkError::InvalidInput(
-                    "群聊消息必须且只能包含 content、markdown、media、card 之一".into(),
+                    "群聊消息必须且只能包含 content、markdown、ark、media、card 之一".into(),
                 ));
             }
             if let Some(msg_type) = request.msg_type
-                && !matches!(msg_type, 0 | 2 | 7 | 8)
+                && !matches!(msg_type, 0 | 2 | 3 | 7 | 8)
             {
                 return Err(SdkError::InvalidInput(
-                    "群聊 msg_type 只能是 0、2、7 或 8".into(),
+                    "群聊 msg_type 只能是 0、2、3、7 或 8".into(),
                 ));
             }
             if request
