@@ -1,6 +1,6 @@
 {
   "name": "@lovely-02/qqbot-sdk-js",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "private": true,
   "description": "Node.js native bindings for qqbot-sdk-rs",
   "license": "MIT",
