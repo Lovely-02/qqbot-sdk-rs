@@ -11,6 +11,13 @@
 - 补充消息／审核事件字段，保留业务错误链路和异步审核数据。
 - 同步官方接口、字段覆盖清单与示例。
 
+## [0.4.2](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.4.1...qqbot-sdk-rs-v0.4.2) (2026-11-26)
+
+
+### 🐛 Bug 修复
+
+* 私聊群聊使用ark卡片 ([dab38a6](https://github.com/Lovely-02/qqbot-sdk-rs/commit/dab38a69a7bd6704aef6dbebe287a83f5b36b406))
+
 ## [0.4.1](https://github.com/Lovely-02/qqbot-sdk-rs/compare/qqbot-sdk-rs-v0.4.0...qqbot-sdk-rs-v0.4.1) (2026-11-22)
 
 
